@@ -52,12 +52,4 @@ final class CommandRunner {
         player.performCommand(message);
         return Result.EXECUTED;
     }
-
-    /**
-     * La commande existe-t-elle ? (premier mot de la commande)
-     */
-    static boolean exists(String command) {
-        String label = command.trim().split(" ", 2)[0].toLowerCase(Locale.ROOT);
-        return !label.isEmpty() && Bukkit.getCommandMap().getCommand(label) != null;
-    }
 }

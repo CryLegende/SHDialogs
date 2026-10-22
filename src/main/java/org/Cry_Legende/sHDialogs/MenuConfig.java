@@ -64,9 +64,9 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, St
             enabled = false;
         }
         return new MenuConfig(enabled, menu.getBoolean("ecran-echap", true), menu.getBoolean("actions-rapides", true),
-                menu.getString("titre", "&e&lMenu SkyHand"), menu.getString("titre-bouton", menu.getString("titre", "&e&lMenu SkyHand")),
+                menu.getString("titre", "&7&l« &e&lSkyHand &8&l» &7Menu"), menu.getString("titre-bouton", "&eMenu SkyHand"),
                 menu.getStringList("texte"), clamp(menu.getInt("colonnes", 2), 1, 4), clamp(menu.getInt("largeur-bouton", 150), 20, 1024),
-                menu.getString("bouton-fermer", "&7Fermer"), List.copyOf(buttons));
+                menu.getString("bouton-fermer", "&c⤾ &fFermer"), List.copyOf(buttons));
     }
 
     private static MenuConfig disabled() {

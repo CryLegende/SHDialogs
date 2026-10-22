@@ -1,12 +1,16 @@
-# SHDialogs - dialogues du serveur (Dialog API, clients 1.21.6 et plus)
+# SHDialogs - menu SkyHand dans l'écran Échap et les actions rapides (Dialog API, clients 1.21.6 et plus)
 #
-# 1. Menu SkyHand : un dialogue enregistré dans le registre du serveur au démarrage (clé skyhand:menu) et ajouté aux
-#    tags PAUSE_SCREEN_ADDITIONS (bouton dans l'écran Échap) et QUICK_ACTIONS (touche « actions rapides » du client).
-#    ATTENTION : l'aspect du menu (titres, textes, libellés, infobulles, colonnes, liste des boutons) est figé au
-#    démarrage du serveur. /shdialogs reload ne recharge que les commandes, les permissions et les messages.
-# 2. /signaler : formulaire de signalement (pseudo, motif, détails) qui lance /report, la commande de TigerReports.
+# Un dialogue enregistré dans le registre du serveur au démarrage (clé skyhand:menu) et ajouté aux tags
+# PAUSE_SCREEN_ADDITIONS (bouton dans l'écran Échap) et QUICK_ACTIONS (touche « actions rapides » du client).
+# ATTENTION : l'aspect du menu (titres, textes, libellés, infobulles, colonnes, liste des boutons) est figé au
+# démarrage du serveur. /shdialogs reload ne recharge que les commandes, les permissions et les messages.
 #
 # Codes de couleur : &a, &l... et &#rrggbb. Chaque commande est exécutée PAR LE JOUEUR, jamais par la console.
+#
+# Charte de rendu (même esprit que les menus DeluxeMenus du serveur) :
+#   - le fond du dialogue est sombre : &8 est lisible pour les cadres « » du titre et du texte ;
+#   - les BOUTONS ont un fond gris moyen : jamais de &8 ni de &0 dans un libellé de bouton, couleurs claires ou blanc ;
+#   - les infobulles ont le fond sombre des infobulles du jeu : &8 y est lisible.
 
 # Préfixe des messages du chat. {couleur} est remplacé par la couleur du type de message (voir plus bas).
 prefixe: '&7&l« &{couleur}&lSH &8&l» &7'
@@ -24,230 +28,193 @@ menu:
   ecran-echap: true
   # Entrée dans les actions rapides du client
   actions-rapides: true
-  titre: '&e&lMenu SkyHand'
-  # Texte du bouton dans l'écran Échap et dans la liste des actions rapides
-  titre-bouton: '&e&lMenu SkyHand'
+  titre: '&7&l« &e&lSkyHand &8&l» &7Menu'
+  # Texte du bouton dans l'écran Échap et dans la liste des actions rapides (court, lisible sur fond gris)
+  titre-bouton: '&eMenu SkyHand'
   texte:
-    - '&7Raccourcis vers les principaux menus de &eSkyHand&7.'
+    - '&7Accédez en un clic aux &emenus principaux &7de &eSkyHand&7.'
+    - '&7&oAstuce : survolez un bouton pour voir sa commande.'
   colonnes: 2
   largeur-bouton: 150
-  bouton-fermer: '&7Fermer'
-  # Chaque bouton lance UNE commande joueur (sans le /). Les boutons sont affichés dans cet ordre.
-  #   libelle    : texte du bouton
-  #   infobulle  : lignes affichées au survol (facultatif)
+  bouton-fermer: '&c⤾ &fFermer'
+  # Chaque bouton lance UNE commande joueur (sans le /). Les boutons sont affichés dans cet ordre, sur 2 colonnes
+  # (gardez un nombre PAIR de boutons actifs). Une couleur par thème : &b navigation, &a économie, &d progression.
+  #   libelle    : texte du bouton, d'UNE couleur et sans gras
+  #   infobulle  : lignes affichées au survol (facultatif) : phrase encadrée, commande, invitation au clic
   #   commande   : commande lancée par le joueur, comme s'il la tapait dans le chat
   #   url        : à la place de commande, ouvre une adresse http(s) (le client demande confirmation)
   #   permission : permission nécessaire (facultatif, vide = tout le monde)
   #   actif      : false pour masquer le bouton
   boutons:
+    # --- Navigation
     ile:
       actif: true
-      libelle: '&b&lMon île'
+      libelle: '&bMon île'
       infobulle:
-        - '&7Le menu de votre île :'
-        - '&7améliorations, paramètres, banque, warps.'
+        - '&8&l« &7Gérez votre &bîle &7: améliorations,'
+        - '&7paramètres, &bbanque &7et &bwarps &8&l»'
         - ''
-        - '&8/is'
+        - '&7&nCommande:&b /is'
+        - ''
+        - '&7&o(( &b&oCliquez pour ouvrir &7&o))'
       commande: 'is'
       permission: ''
     general:
       actif: true
-      libelle: '&6&lMenu général'
+      libelle: '&bMenu général'
       infobulle:
-        - '&7Boutique, métiers, hôtel des ventes,'
-        - '&7collectibles, warps et kits.'
+        - '&8&l« &7Le &bmenu général &7: boutique,'
+        - '&7métiers, ventes, collectibles,'
+        - '&bwarps &7et &bkits &8&l»'
         - ''
-        - '&8/is more'
+        - '&7&nCommande:&b /is more'
+        - ''
+        - '&7&o(( &b&oCliquez pour ouvrir &7&o))'
       commande: 'is more'
       permission: ''
+    warps:
+      actif: true
+      libelle: '&bWarps'
+      infobulle:
+        - '&8&l« &bArène&7, &b1v1&7, &benchantement&7,'
+        - "&7top et bien d'autres &bwarps &8&l»"
+        - ''
+        - '&7&nCommande:&b /warp'
+        - ''
+        - '&7&o(( &b&oCliquez pour ouvrir &7&o))'
+      commande: 'warp'
+      permission: ''
+    # Menu DeluxeMenus « Règlement du SkyBlock » : règles générales, chat, cheats/mods, autres et règles du SkyBlock
+    reglement:
+      actif: true
+      libelle: '&bRèglement'
+      infobulle:
+        - '&8&l« &7Consultez les &brègles générales'
+        - '&7du serveur et celles du &bSkyBlock &8&l»'
+        - ''
+        - '&7&nCommande:&b /regles'
+        - ''
+        - '&7&o(( &b&oCliquez pour ouvrir &7&o))'
+      commande: 'regles'
+      permission: ''
+    # --- Économie
     boutique:
       actif: true
-      libelle: '&a&lBoutique'
+      libelle: '&aBoutique'
       infobulle:
-        - '&7Achetez et vendez des blocs,'
-        - '&7des minerais, des aliments...'
+        - '&8&l« &aAchetez &7et &avendez &7des blocs,'
+        - '&7des minerais, des aliments... &8&l»'
         - ''
-        - '&8/shop'
+        - '&7&nCommande:&a /shop'
+        - ''
+        - '&7&o(( &a&oCliquez pour ouvrir &7&o))'
       commande: 'shop'
       permission: ''
     metiers:
       actif: true
-      libelle: '&2&lMétiers'
+      libelle: '&aMétiers'
       infobulle:
-        - '&7Vos métiers, leur niveau et'
-        - '&7vos points de métier.'
+        - '&8&l« &7Consultez vos &amétiers&7, leur'
+        - '&7niveau et vos &apoints de métier &8&l»'
         - ''
-        - '&8/jobs'
+        - '&7&nCommande:&a /jobs'
+        - ''
+        - '&7&o(( &a&oCliquez pour ouvrir &7&o))'
       commande: 'jobs'
       permission: ''
     hdv:
       actif: true
-      libelle: '&e&lHôtel des ventes'
+      libelle: '&aHôtel des ventes'
       infobulle:
-        - '&7Ventes directes et enchères'
-        - '&7entre joueurs.'
+        - '&8&l« &aVentes directes &7et &aenchères'
+        - '&7entre joueurs &8&l»'
         - ''
-        - '&8/hdv'
+        - '&7&nCommande:&a /hdv'
+        - ''
+        - '&7&o(( &a&oCliquez pour ouvrir &7&o))'
       commande: 'hdv'
       permission: ''
+    # --- Progression
     quetes:
       actif: true
-      libelle: '&d&lQuêtes'
+      libelle: '&dQuêtes'
       infobulle:
-        - '&7Vos quêtes en cours et leurs récompenses.'
+        - '&8&l« &7Suivez vos &dquêtes &7en cours'
+        - '&7et leurs &drécompenses &8&l»'
         - ''
-        - '&8/quest'
+        - '&7&nCommande:&d /quest'
+        - ''
+        - '&7&o(( &d&oCliquez pour ouvrir &7&o))'
       commande: 'quest'
-      permission: ''
-    warps:
-      actif: true
-      libelle: '&9&lWarps'
-      infobulle:
-        - '&7Arène, 1v1, enchantement, top...'
-        - ''
-        - '&8/warp'
-      commande: 'warp'
       permission: ''
     vote:
       actif: true
-      libelle: '&5&lVotes et récompenses'
+      libelle: '&dVotes et récompenses'
       infobulle:
-        - '&7Récompenses journalières et votes.'
+        - '&8&l« &dRécompenses journalières &7et'
+        - '&dvotes &7pour SkyHand &8&l»'
         - ''
-        - '&8/vote'
+        - '&7&nCommande:&d /vote'
+        - ''
+        - '&7&o(( &d&oCliquez pour ouvrir &7&o))'
       commande: 'vote'
       permission: ''
     skyhand:
       actif: true
-      libelle: '&b&lFonctionnalités uniques'
+      libelle: '&dFonctionnalités uniques'
       infobulle:
-        - '&7Ce que SkyHand propose de plus.'
+        - '&8&l« &7Découvrez tout ce que &dSkyHand'
+        - '&7propose de plus &8&l»'
         - ''
-        - '&8/skyhand'
+        - '&7&nCommande:&d /skyhand'
+        - ''
+        - '&7&o(( &d&oCliquez pour ouvrir &7&o))'
       commande: 'skyhand'
-      permission: ''
-    signaler:
-      actif: true
-      libelle: '&c&lSignaler un joueur'
-      infobulle:
-        - '&7Ouvre le formulaire de signalement.'
-        - ''
-        - '&8/signaler'
-      commande: 'signaler'
       permission: ''
     # Liens du serveur : déjà proposés par SHWelcome dans le bouton « Liens du serveur » de l'écran Échap.
     # À activer seulement si vous les voulez aussi dans les actions rapides (ils seront alors en double dans Échap).
+    # Gardez un nombre pair de boutons actifs : activez-les par deux.
     discord:
       actif: false
-      libelle: '&9&lDiscord'
+      libelle: '&9Discord'
       infobulle:
-        - '&7Rejoindre le serveur Discord.'
+        - '&8&l« &7Rejoignez le serveur &9Discord &8&l»'
+        - ''
+        - '&7&nLien:&9 discord.skyhand.fr'
+        - ''
+        - '&7&o(( &9&oCliquez pour ouvrir &7&o))'
       url: 'https://discord.skyhand.fr'
     site:
       actif: false
-      libelle: '&b&lSite web'
+      libelle: '&bSite web'
       infobulle:
-        - '&7skyhand.fr'
+        - '&8&l« &7Le &bsite &7de SkyHand &8&l»'
+        - ''
+        - '&7&nLien:&b skyhand.fr'
+        - ''
+        - '&7&o(( &b&oCliquez pour ouvrir &7&o))'
       url: 'https://skyhand.fr'
     voter:
       actif: false
-      libelle: '&d&lVoter'
+      libelle: '&dVoter'
       infobulle:
-        - '&7Votez pour SkyHand et gagnez des récompenses.'
+        - '&8&l« &7Votez pour &dSkyHand &7et gagnez'
+        - '&7des &drécompenses &8&l»'
+        - ''
+        - '&7&nLien:&d skyhand.fr/vote'
+        - ''
+        - '&7&o(( &d&oCliquez pour ouvrir &7&o))'
       url: 'https://skyhand.fr/vote'
     boutique-web:
       actif: false
-      libelle: '&a&lBoutique en ligne'
+      libelle: '&aBoutique en ligne'
       infobulle:
-        - '&7store.skyhand.fr'
+        - '&8&l« &7La &aboutique en ligne &7de SkyHand &8&l»'
+        - ''
+        - '&7&nLien:&a store.skyhand.fr'
+        - ''
+        - '&7&o(( &a&oCliquez pour ouvrir &7&o))'
       url: 'https://store.skyhand.fr'
-
-# ---------------------------------------------------------------------------------------------------------------
-# /signaler
-# ---------------------------------------------------------------------------------------------------------------
-signalement:
-  actif: true
-  # Commande lancée par le joueur après toutes les vérifications.
-  # Variables : {joueur} (pseudo), {raison} (motif + détails mis en forme), {motif}, {details}
-  commande: 'report {joueur} {raison}'
-  # Les clients plus anciens que 1.21.6 (protocole 771) ne connaissent pas les dialogues : ils sont renvoyés vers /report.
-  # Il faut ViaVersion pour connaître la version du client ; sans lui tout le monde est considéré compatible.
-  protocole-minimum: 771
-  # Délai minimal entre deux signalements envoyés par le même joueur (TigerReports a son propre délai en plus).
-  cooldown-secondes: 30
-  # Durée de validité d'un formulaire ouvert : au-delà, ses boutons ne sont plus acceptés.
-  expiration-secondes: 600
-  # Un pseudo doit correspondre à cette expression, sinon il est refusé
-  pseudo-regex: '^[A-Za-z0-9_]{1,16}$'
-  pseudo-longueur-max: 16
-  # Refuser un pseudo ni connecté ni déjà venu sur le serveur
-  refuser-joueur-inconnu: true
-  # Détails facultatifs : longueur maximale (contrôlée aussi côté serveur), taille de la zone de saisie
-  details-longueur-max: 150
-  details-lignes: 4
-  details-hauteur: 80
-  # Mise en forme de la raison transmise à TigerReports (sans détails, seul le motif est transmis)
-  format-raison: '{motif} - {details}'
-  raison-longueur-max: 200
-  largeur: 260
-  titre: '&c&lSignaler un joueur'
-  texte:
-    - '&7Indiquez le joueur, le motif, puis des détails si besoin.'
-    - '&7Un faux signalement peut être sanctionné.'
-  champ-joueur: '&7Pseudo du joueur'
-  champ-motif: '&7Motif'
-  champ-details: '&7Détails (facultatif)'
-  bouton-envoyer: '&a&lEnvoyer le signalement'
-  infobulle-envoyer:
-    - '&7Transmet le signalement à l''équipe'
-    - '&7via TigerReports.'
-  bouton-annuler: '&7Annuler'
-  infobulle-annuler: []
-  # Erreurs affichées en rouge en haut du formulaire (les champs saisis sont conservés)
-  erreurs:
-    pseudo-vide: '&cIndiquez le pseudo du joueur à signaler.'
-    pseudo-invalide: '&cCe pseudo n''est pas valide.'
-    pseudo-inconnu: '&cLe joueur &f{joueur} &cest introuvable.'
-    soi-meme: '&cVous ne pouvez pas vous signaler vous-même.'
-    motif-invalide: '&cChoisissez un motif dans la liste.'
-    details-trop-longs: '&cLes détails sont trop longs ({max} caractères maximum).'
-    raison-trop-longue: '&cLe signalement est trop long, raccourcissez les détails.'
-  # Motifs proposés. raison = texte EXACT du motif dans TigerReports (Config.DefaultReasons.ReasonN.Name de son
-  # config.yml). Un motif absent de la liste de TigerReports est signalé dans la console au démarrage et au reload.
-  motifs:
-    - id: 'cheat-fly'
-      libelle: '&fCheat (Fly)'
-      raison: 'Cheat (Fly)'
-    - id: 'cheat-pvp'
-      libelle: '&fCheat (PvP)'
-      raison: 'Cheat (PvP)'
-    - id: 'langage'
-      libelle: '&fLangage'
-      raison: 'Langage'
-    - id: 'spam'
-      libelle: '&fSpam'
-      raison: 'Spam'
-    - id: 'flood'
-      libelle: '&fFlood'
-      raison: 'Flood'
-    - id: 'provocation'
-      libelle: '&fProvocation'
-      raison: 'Provocation'
-    - id: 'pub'
-      libelle: '&fPub'
-      raison: 'Pub'
-    - id: 'arnaque'
-      libelle: '&fArnaque'
-      raison: 'Arnaque'
-    - id: 'vol'
-      libelle: '&fVol'
-      raison: 'Vol'
-    - id: 'bug'
-      libelle: '&fUtilisation de bug'
-      raison: 'UseBug'
-    - id: 'pseudo-skin'
-      libelle: '&fPseudo ou skin inapproprié'
-      raison: 'Pseudo/skin innapproprié'
 
 # ---------------------------------------------------------------------------------------------------------------
 # Messages du chat (sans préfixe : il dépend du type, voir « prefixe » et « couleurs » plus haut)
@@ -261,13 +228,8 @@ messages:
     bouton-indisponible: 'Ce bouton n''est plus disponible.'
     bouton-permission: 'Vous n''avez pas accès à &e{bouton}&7.'
     commande-echec: 'La commande &e/{commande} &7n''a pas pu être lancée.'
-    version-ancienne: 'Votre version de Minecraft ne gère pas ce formulaire : utilisez &e/report <joueur> <motif>&7.'
-    signalement-desactive: 'Les signalements par formulaire sont &cdésactivés&7.'
-    signalement-indisponible: 'Les signalements sont &cindisponibles &7pour le moment.'
-    cooldown: 'Patientez encore &e{secondes} s &7avant un nouveau signalement.'
-    formulaire-expire: 'Ce formulaire n''est plus valable : relancez &e/signaler&7.'
-    ouverture-impossible: 'Le formulaire n''a pas pu s''ouvrir : utilisez &e/report <joueur> <motif>&7.'
-    erreur-interne: 'Une erreur est survenue : utilisez &e/report <joueur> <motif>&7.'
+    version-ancienne: 'Votre version de Minecraft ne gère pas ce menu : il faut la &e1.21.6 &7ou plus.'
+    erreur-interne: 'Une erreur est survenue : réessayez, ou prévenez un membre du &cstaff&7.'
   succes:
     recharge: 'Configuration &arechargée&7.'
   info:
