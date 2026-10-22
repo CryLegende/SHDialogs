@@ -1,0 +1,30 @@
+name: SHDialogs
+version: '${project.version}'
+main: org.Cry_Legende.sHDialogs.SHDialogs
+bootstrapper: org.Cry_Legende.sHDialogs.SHDialogsBootstrap
+api-version: '1.21'
+author: Cry_Legende
+description: Menu SkyHand dans l'écran Échap et les actions rapides, formulaire de signalement en dialogue (/signaler).
+dependencies:
+  server:
+    # facultatif : version du client, pour renvoyer les clients trop anciens vers /report
+    ViaVersion:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    # facultatif : /signaler exécute /report, la commande de TigerReports
+    TigerReports:
+      load: BEFORE
+      required: false
+      join-classpath: false
+
+permissions:
+  shdialogs.admin:
+    description: Recharger la configuration (/shdialogs reload).
+    default: op
+  shdialogs.menu:
+    description: Ouvrir le menu SkyHand par commande (/shdialogs menu), outil de test et de secours.
+    default: op
+  shdialogs.signaler:
+    description: Utiliser /signaler.
+    default: true
