@@ -28,8 +28,18 @@ Détails à connaître :
 - **Commandes lancées par le joueur, jamais par la console.** Le plugin déclenche `PlayerCommandPreprocessEvent` avant d'exécuter la commande : c'est ainsi que DeluxeMenus ouvre ses menus pour `/is`, `/warp`, `/kits`... et que les plugins de restriction de commandes gardent la main.
 - **L'aspect du menu est figé au démarrage** (le registre des dialogues ne se modifie plus ensuite). `/shdialogs reload` relit les commandes des boutons, les permissions et les messages ; si l'aspect du menu a changé, il prévient qu'un redémarrage est nécessaire.
 - **Le client n'est jamais cru sur parole** : au clic, la commande est retrouvée dans `config.yml` d'après l'identifiant du bouton, jamais d'après ce que dit le client.
-- **Nombre pair de boutons** : le menu est sur 2 colonnes, gardez un nombre pair de boutons actifs (les liens web, désactivés par défaut, s'activent par deux).
+- **Nombre pair de boutons** : le menu est sur 2 colonnes, gardez un nombre pair de boutons actifs (les liens web, Discord, site, vote et boutique, se désactivent par deux).
 - **Clients plus anciens que 1.21.6** (protocole 771, détectés avec ViaVersion) : ils ne voient pas le menu (ils ne connaissent pas les dialogues) mais se connectent normalement.
+
+### Dialogues à la demande
+
+La section `dialogues` de `config.yml` décrit autant de dialogues que voulu (titre, texte, boutons « url » ou « commande »). `/shdialogs open <dialogue>` en ouvre un : c'est ce que lancent les menus DeluxeMenus avec `[player] shdialogs open vote`, à la suite du texte classique du menu (l'adresse reste posée dans le chat). Dialogues fournis : `vote`, `discord`, `discord-liaison`, `nitro`, `boutique`, `grades`, `reglement`.
+
+- **Rechargés sans redémarrage** : contrairement au menu SkyHand, ils sont construits à l'exécution, `/shdialogs reload` suffit pour ajouter ou modifier un dialogue.
+- **Une adresse par site** : changez-la dans le dialogue, tous les menus qui l'ouvrent la suivent.
+- **Clients plus anciens que la 1.21.6** : pas de repli, seulement un avertissement envoyé à celui qui a lancé la commande (le joueur lui-même, ou le staff / la console s'ils l'ont ouvert à quelqu'un d'autre). Le texte classique du menu DeluxeMenus leur suffit.
+- **Boutons de commande** : lancés par le joueur comme ceux du menu, la commande est retrouvée dans `config.yml` d'après les identifiants du dialogue et du bouton.
+- **Pas de `[close]` dans les menus** : un `[close]` laisse un instant sans écran entre le menu et le dialogue (clignotement). Le menu reste affiché, et SHDialogs le ferme au tick suivant, juste avant d'ouvrir le dialogue (même tick, même image côté client).
 
 Utilisé sur : **Opale** (Purpur/DivineMC 1.21.11, Java 25).
 
@@ -43,6 +53,7 @@ Utilisé sur : **Opale** (Purpur/DivineMC 1.21.11, Java 25).
 |---|---|---|---|
 | `/shdialogs reload` | — | Recharge la configuration. | `shdialogs.admin` |
 | `/shdialogs menu` | — | Ouvre le menu SkyHand à la demande (outil de test du staff). | `shdialogs.menu` |
+| `/shdialogs open <dialogue> [joueur]` | — | Ouvre un dialogue de la section `dialogues` (à soi-même, ou à un joueur pour la console et le staff). | `shdialogs.open` (tous), `shdialogs.open.others` (op) |
 
 ## Permissions
 
@@ -50,6 +61,8 @@ Utilisé sur : **Opale** (Purpur/DivineMC 1.21.11, Java 25).
 |---|---|---|
 | `shdialogs.admin` | Recharger la configuration. | `op` |
 | `shdialogs.menu` | Ouvrir le menu SkyHand par commande. | `op` |
+| `shdialogs.open` | Ouvrir un dialogue pour soi-même (menus DeluxeMenus). | tous |
+| `shdialogs.open.others` | Ouvrir un dialogue à un autre joueur. | `op` |
 
 ## Configuration
 
@@ -66,7 +79,9 @@ plugins/SHDialogs/
     │       ├── ile, general, warps, reglement        navigation
     │       ├── boutique, metiers, hdv                économie
     │       ├── quetes, vote, skyhand                 progression
-    │       └── discord, site, voter, boutique-web    liens (désactivés par défaut)
+    │       └── discord, site, voter, boutique-web    liens web (bouton « url »)
+    ├── dialogues                dialogues à la demande (rechargés par /shdialogs reload)
+    │   └── vote, discord, discord-liaison, nitro, boutique, grades, reglement
     └── messages                 messages du chat, par type (erreur, succes, info)
 </pre>
 

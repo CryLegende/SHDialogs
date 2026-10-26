@@ -8,14 +8,15 @@ import java.util.EnumMap;
 import java.util.Map;
 
 /**
- * Messages du chat. Le préfixe est celui de config.yml, avec la couleur du type du message (erreur, succès, info).
+ * Messages du chat. Le préfixe est celui de config.yml, avec la couleur du type du message (erreur, succès, info, avertissement).
  */
 final class Messages {
 
     enum Type {
         ERREUR("erreur"),
         SUCCES("succes"),
-        INFO("info");
+        INFO("info"),
+        AVERTISSEMENT("avertissement");
 
         private final String path;
 
@@ -33,6 +34,7 @@ final class Messages {
         this.colors.put(Type.ERREUR, config.getString("couleurs.erreur", "c"));
         this.colors.put(Type.SUCCES, config.getString("couleurs.succes", "a"));
         this.colors.put(Type.INFO, config.getString("couleurs.info", "e"));
+        this.colors.put(Type.AVERTISSEMENT, config.getString("couleurs.avertissement", "6"));
         this.messages = config.getConfigurationSection("messages");
     }
 

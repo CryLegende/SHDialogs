@@ -4,7 +4,7 @@ main: org.Cry_Legende.sHDialogs.SHDialogs
 bootstrapper: org.Cry_Legende.sHDialogs.SHDialogsBootstrap
 api-version: '1.21'
 author: Cry_Legende
-description: Menu SkyHand dans l'écran Échap et les actions rapides.
+description: Menu SkyHand dans l'écran Échap et les actions rapides, et dialogues à la demande.
 dependencies:
   server:
     # facultatif : version du client, pour refuser /shdialogs menu aux clients trop anciens
@@ -19,4 +19,10 @@ permissions:
     default: op
   shdialogs.menu:
     description: Ouvrir le menu SkyHand par commande (/shdialogs menu), outil de test et de secours.
+    default: op
+  shdialogs.open:
+    description: Ouvrir un dialogue pour soi-même (/shdialogs open <dialogue>), utilisé par les menus DeluxeMenus.
+    default: true
+  shdialogs.open.others:
+    description: Ouvrir un dialogue à un autre joueur (/shdialogs open <dialogue> <joueur>).
     default: op

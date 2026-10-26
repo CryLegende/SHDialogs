@@ -29,10 +29,17 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, St
         }
 
         /**
-         * Clé envoyée par le client au clic (boutons de commande seulement).
+         * Clé envoyée par le client au clic (boutons de commande seulement) : menu/&lt;id&gt; pour le menu SkyHand.
          */
         Key clickKey() {
-            return Key.key("shdialogs", "menu/" + id);
+            return clickKey("menu");
+        }
+
+        /**
+         * Même clé pour un autre parent, par exemple dialogue/&lt;dialogue&gt; (voir {@link DialogueConfig}).
+         */
+        Key clickKey(String scope) {
+            return Key.key("shdialogs", scope + "/" + id);
         }
     }
 
@@ -44,20 +51,7 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, St
         if (menu == null) {
             return disabled();
         }
-        List<Button> buttons = new ArrayList<>();
-        ConfigurationSection section = menu.getConfigurationSection("boutons");
-        if (section != null) {
-            for (String id : section.getKeys(false)) {
-                ConfigurationSection b = section.getConfigurationSection(id);
-                if (b == null || !b.getBoolean("actif", true)) {
-                    continue;
-                }
-                Button button = readButton(id, b, warn);
-                if (button != null) {
-                    buttons.add(button);
-                }
-            }
-        }
+        List<Button> buttons = readButtons(menu.getConfigurationSection("boutons"), warn);
         boolean enabled = menu.getBoolean("actif", true);
         if (enabled && buttons.isEmpty()) {
             warn.accept("Menu SkyHand ignoré : aucun bouton valide dans menu.boutons.");
@@ -71,6 +65,27 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, St
 
     private static MenuConfig disabled() {
         return new MenuConfig(false, false, false, "", "", List.of(), 1, 150, "", List.of());
+    }
+
+    /**
+     * Les boutons actifs et valides d'une section « boutons » (menu ou dialogue), dans l'ordre du fichier.
+     */
+    static List<Button> readButtons(ConfigurationSection section, Consumer<String> warn) {
+        List<Button> buttons = new ArrayList<>();
+        if (section == null) {
+            return buttons;
+        }
+        for (String id : section.getKeys(false)) {
+            ConfigurationSection b = section.getConfigurationSection(id);
+            if (b == null || !b.getBoolean("actif", true)) {
+                continue;
+            }
+            Button button = readButton(id, b, warn);
+            if (button != null) {
+                buttons.add(button);
+            }
+        }
+        return buttons;
     }
 
     private static Button readButton(String id, ConfigurationSection b, Consumer<String> warn) {
@@ -132,7 +147,7 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, St
         }
     }
 
-    private static int clamp(int value, int min, int max) {
+    static int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
     }
 

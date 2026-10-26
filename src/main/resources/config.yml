@@ -5,6 +5,11 @@
 # ATTENTION : l'aspect du menu (titres, textes, libellés, infobulles, colonnes, liste des boutons) est figé au
 # démarrage du serveur. /shdialogs reload ne recharge que les commandes, les permissions et les messages.
 #
+# Dialogues à la demande (section « dialogues », plus bas) : /shdialogs open <dialogue> [joueur] en ouvre un depuis un
+# menu DeluxeMenus (« [player] shdialogs open vote », à la suite du texte classique du menu), une commande, un NPC...
+# Ils sont construits à l'exécution : /shdialogs reload les recharge, sans redémarrage. Les clients plus anciens que la
+# 1.21.6 ne les voient pas : ils reçoivent seulement un avertissement.
+#
 # Codes de couleur : &a, &l... et &#rrggbb. Chaque commande est exécutée PAR LE JOUEUR, jamais par la console.
 #
 # Charte de rendu (même esprit que les menus DeluxeMenus du serveur) :
@@ -18,6 +23,7 @@ couleurs:
   erreur: 'c'
   succes: 'a'
   info: 'e'
+  avertissement: '6'
 
 # ---------------------------------------------------------------------------------------------------------------
 # Menu SkyHand
@@ -171,11 +177,10 @@ menu:
         - '&7&o(( &d&oCliquez pour ouvrir &7&o))'
       commande: 'skyhand'
       permission: ''
-    # Liens du serveur : déjà proposés par SHWelcome dans le bouton « Liens du serveur » de l'écran Échap.
-    # À activer seulement si vous les voulez aussi dans les actions rapides (ils seront alors en double dans Échap).
-    # Gardez un nombre pair de boutons actifs : activez-les par deux.
+    # Liens du serveur (Discord, site, vote, boutique) : l'écran Échap n'accepte qu'un seul bouton de dialogue, c'est donc
+    # ce menu qui les propose (SHWelcome ne s'en occupe plus). Gardez un nombre pair de boutons actifs : désactivez-les par deux.
     discord:
-      actif: false
+      actif: true
       libelle: '&9Discord'
       infobulle:
         - '&8&l« &7Rejoignez le serveur &9Discord &8&l»'
@@ -185,7 +190,7 @@ menu:
         - '&7&o(( &9&oCliquez pour ouvrir &7&o))'
       url: 'https://discord.skyhand.fr'
     site:
-      actif: false
+      actif: true
       libelle: '&bSite web'
       infobulle:
         - '&8&l« &7Le &bsite &7de SkyHand &8&l»'
@@ -195,7 +200,7 @@ menu:
         - '&7&o(( &b&oCliquez pour ouvrir &7&o))'
       url: 'https://skyhand.fr'
     voter:
-      actif: false
+      actif: true
       libelle: '&dVoter'
       infobulle:
         - '&8&l« &7Votez pour &dSkyHand &7et gagnez'
@@ -206,7 +211,7 @@ menu:
         - '&7&o(( &d&oCliquez pour ouvrir &7&o))'
       url: 'https://skyhand.fr/vote'
     boutique-web:
-      actif: false
+      actif: true
       libelle: '&aBoutique en ligne'
       infobulle:
         - '&8&l« &7La &aboutique en ligne &7de SkyHand &8&l»'
@@ -217,13 +222,156 @@ menu:
       url: 'https://store.skyhand.fr'
 
 # ---------------------------------------------------------------------------------------------------------------
+# Dialogues à la demande : /shdialogs open <dialogue> [joueur]
+# ---------------------------------------------------------------------------------------------------------------
+# Chaque dialogue a un titre, un texte (lignes) et des boutons (mêmes champs que menu.boutons : libelle, infobulle, url ou
+# commande, permission, actif). En option : colonnes (1), largeur-bouton (200), bouton-fermer, permission (du dialogue
+# entier) et actif. Une seule adresse par site : changez-la ici, tous les menus qui ouvrent le dialogue la suivent.
+dialogues:
+  vote:
+    titre: '&7&l« &d&lVote &8&l» &7Soutenir SkyHand'
+    texte:
+      - '&7Votez pour &dSkyHand &7sur nos sites partenaires et'
+      - '&7gagnez des &drécompenses &7: clés, temps de fly et d''AFK.'
+    boutons:
+      voter:
+        libelle: '&dVoter maintenant'
+        infobulle:
+          - '&8&l« &7Choisissez un site de vote puis'
+          - '&7validez votre &dvote &8&l»'
+          - ''
+          - '&7&nLien:&d skyhand.fr/vote'
+          - ''
+          - '&7&o(( &d&oCliquez pour ouvrir &7&o))'
+        url: 'https://skyhand.fr/vote'
+  discord:
+    titre: '&7&l« &9&lDiscord &8&l» &7SkyHand'
+    texte:
+      - '&7Rejoignez le serveur &9Discord &7de &9SkyHand &7: annonces,'
+      - '&7support par &9ticket &7et notifications de vote.'
+    boutons:
+      rejoindre:
+        libelle: '&9Rejoindre le Discord'
+        infobulle:
+          - '&8&l« &7Rejoignez le serveur &9Discord &8&l»'
+          - ''
+          - '&7&nLien:&9 discord.skyhand.fr'
+          - ''
+          - '&7&o(( &9&oCliquez pour ouvrir &7&o))'
+        url: 'https://discord.skyhand.fr'
+  # Pour les joueurs dont le compte n'est pas encore lié : rejoindre le Discord puis lancer /liaison
+  discord-liaison:
+    titre: '&7&l« &9&lDiscord &8&l» &7Liaison de compte'
+    texte:
+      - '&7Rejoignez le &9Discord &7puis liez votre compte avec'
+      - '&e/liaison &7pour recevoir vos &9rôles &7et vos notifications.'
+    boutons:
+      rejoindre:
+        libelle: '&9Rejoindre le Discord'
+        infobulle:
+          - '&8&l« &7Rejoignez le serveur &9Discord &8&l»'
+          - ''
+          - '&7&nLien:&9 discord.skyhand.fr'
+          - ''
+          - '&7&o(( &9&oCliquez pour ouvrir &7&o))'
+        url: 'https://discord.skyhand.fr'
+      liaison:
+        libelle: '&9Lier mon compte'
+        infobulle:
+          - '&8&l« &7Reliez votre compte &9Minecraft'
+          - '&7à votre compte &9Discord &8&l»'
+          - ''
+          - '&7&nCommande:&9 /liaison'
+          - ''
+          - '&7&o(( &9&oCliquez pour lancer &7&o))'
+        commande: 'liaison'
+  # Kit Nitro Booster (menu des kits)
+  nitro:
+    titre: '&7&l« &d&lKit Nitro &8&l» &7Discord'
+    texte:
+      - '&7Ce kit est réservé aux &dboosters &7du &9Discord &7de &dSkyHand&7.'
+      - '&7Boostez le serveur, puis liez votre compte avec &e/liaison&7.'
+    boutons:
+      rejoindre:
+        libelle: '&9Rejoindre le Discord'
+        infobulle:
+          - '&8&l« &7Rejoignez le serveur &9Discord &8&l»'
+          - ''
+          - '&7&nLien:&9 discord.skyhand.fr'
+          - ''
+          - '&7&o(( &9&oCliquez pour ouvrir &7&o))'
+        url: 'https://discord.skyhand.fr'
+      liaison:
+        libelle: '&9Lier mon compte'
+        infobulle:
+          - '&8&l« &7Reliez votre compte &9Minecraft'
+          - '&7à votre compte &9Discord &8&l»'
+          - ''
+          - '&7&nCommande:&9 /liaison'
+          - ''
+          - '&7&o(( &9&oCliquez pour lancer &7&o))'
+        commande: 'liaison'
+  boutique:
+    titre: '&7&l« &a&lBoutique &8&l» &7SkyHand'
+    texte:
+      - '&7Grades, clés, cosmétiques... la &aboutique en ligne &7de'
+      - '&aSkyHand &7soutient le serveur et ses joueurs.'
+    boutons:
+      ouvrir:
+        libelle: '&aOuvrir la boutique'
+        infobulle:
+          - '&8&l« &7La &aboutique en ligne &7de SkyHand &8&l»'
+          - ''
+          - '&7&nLien:&a store.skyhand.fr'
+          - ''
+          - '&7&o(( &a&oCliquez pour ouvrir &7&o))'
+        url: 'https://store.skyhand.fr'
+  grades:
+    titre: '&7&l« &a&lGrades &8&l» &7Boutique'
+    texte:
+      - '&7Les &agrades &7s''achètent sur la &aboutique en ligne &7de'
+      - '&aSkyHand&7 : commandes, récompenses et avantages exclusifs.'
+    boutons:
+      voir:
+        libelle: '&aVoir les grades'
+        infobulle:
+          - '&8&l« &7Découvrez les &agrades &7et leurs'
+          - '&aavantages &7sur la boutique &8&l»'
+          - ''
+          - '&7&nLien:&a store.skyhand.fr'
+          - ''
+          - '&7&o(( &a&oCliquez pour ouvrir &7&o))'
+        url: 'https://store.skyhand.fr'
+  reglement:
+    titre: '&7&l« &b&lRèglement &8&l» &7SkyHand'
+    texte:
+      - '&7Le &brèglement complet &7du serveur est consultable sur'
+      - '&7le site de &bSkyHand&7. Merci de le respecter.'
+    boutons:
+      lire:
+        libelle: '&bLire le règlement'
+        infobulle:
+          - '&8&l« &7Règles générales, chat, cheats/mods'
+          - '&7et règles du &bSkyBlock &8&l»'
+          - ''
+          - '&7&nLien:&b skyhand.fr/reglement'
+          - ''
+          - '&7&o(( &b&oCliquez pour ouvrir &7&o))'
+        url: 'https://skyhand.fr/reglement'
+
+# ---------------------------------------------------------------------------------------------------------------
 # Messages du chat (sans préfixe : il dépend du type, voir « prefixe » et « couleurs » plus haut)
 # ---------------------------------------------------------------------------------------------------------------
 messages:
   erreur:
     joueur-seulement: 'Commande réservée aux &cjoueurs&7.'
     permission: 'Vous n''avez pas la permission.'
-    usage: 'Utilisation : &e/shdialogs <reload|menu>&7.'
+    usage: 'Utilisation : &e/shdialogs <reload|menu|open>&7.'
+    open-usage: 'Utilisation : &e/shdialogs open <dialogue> [joueur]&7.'
+    dialogue-inconnu: 'Le dialogue &e{dialogue} &7n''existe pas.'
+    dialogue-permission: 'Vous n''avez pas accès à ce dialogue.'
+    joueur-introuvable: 'Le joueur &e{joueur} &7n''est pas connecté.'
+    console-joueur: 'La console doit indiquer un joueur : &e/shdialogs open <dialogue> <joueur>&7.'
     menu-indisponible: 'Le menu SkyHand n''est pas chargé (voir la console).'
     bouton-indisponible: 'Ce bouton n''est plus disponible.'
     bouton-permission: 'Vous n''avez pas accès à &e{bouton}&7.'
@@ -232,5 +380,11 @@ messages:
     erreur-interne: 'Une erreur est survenue : réessayez, ou prévenez un membre du &cstaff&7.'
   succes:
     recharge: 'Configuration &arechargée&7.'
+    ouvert: 'Dialogue &e{dialogue} &7ouvert pour &e{joueur}&7.'
   info:
     menu-redemarrage: 'L''aspect du menu SkyHand a changé : il ne sera mis à jour qu''au &eprochain redémarrage&7.'
+  avertissement:
+    # Client sans dialogues (avant la 1.21.6) : pas de repli, les menus DeluxeMenus gardent leur texte classique.
+    # L'avertissement va à celui qui lance la commande : au joueur lui-même, ou au staff / à la console s'ils l'ouvrent à un autre joueur.
+    version-ancienne: 'Votre version de Minecraft ne gère pas les dialogues : il faut la &e1.21.6 &7ou plus.'
+    version-ancienne-autre: 'Le joueur &e{joueur} &7ne gère pas les dialogues (&e1.21.6 &7minimum).'
