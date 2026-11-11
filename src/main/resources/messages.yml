@@ -1,0 +1,60 @@
+# Messages du chat de SHDialogs. Codes de couleur : &a, &l... et &#rrggbb.
+# Les variables s'écrivent {nom} ; chaque message dit les siennes.
+
+# Préfixe des messages du chat. {couleur} est remplacé par la couleur du type de message (voir plus bas).
+prefixe: '&7&l« &{couleur}&lSH &8&l» &7'
+couleurs:
+  erreur: 'c'
+  succes: 'a'
+  info: 'e'
+  avertissement: '6'
+
+# Mots repris dans les messages (/shdialogs list)
+mots:
+  oui: '&aoui&7'
+  non: '&cnon&7'
+  aucune: 'aucune'
+
+erreur:
+  joueur-seulement: 'Commande réservée aux &cjoueurs&7.'
+  permission: 'Vous n''avez pas la permission.'
+  # {sous-commandes} : les sous-commandes que l'expéditeur a le droit d'utiliser
+  usage-liste: 'Utilisation : &e/shdialogs <{sous-commandes}>&7.'
+  open-usage: 'Utilisation : &e/shdialogs open <dialogue> [joueur]&7.'
+  dialogue-inconnu: 'Le dialogue &e{dialogue} &7n''existe pas.'
+  dialogue-permission: 'Vous n''avez pas accès à ce dialogue.'
+  joueur-introuvable: 'Le joueur &e{joueur} &7n''est pas connecté.'
+  console-joueur: 'La console doit indiquer un joueur : &e/shdialogs open <dialogue> <joueur>&7.'
+  menu-indisponible: 'Le menu SkyHand n''est pas chargé (voir la console).'
+  bouton-indisponible: 'Ce bouton n''est plus disponible.'
+  bouton-permission: 'Vous n''avez pas accès à &e{bouton}&7.'
+  commande-echec: 'La commande &e/{commande} &7n''a pas pu être lancée.'
+  version-ancienne: 'Votre version de Minecraft ne gère pas ce menu : il faut la &e1.21.6 &7ou plus.'
+  erreur-interne: 'Une erreur est survenue : réessayez, ou prévenez un membre du &cstaff&7.'
+  # {fichier} : fichier invalide, {erreur} : cause
+  reload-erreur: 'Rechargement refusé : &c{fichier}&7 est invalide, l''ancienne configuration reste en place. &c{erreur}'
+  # {dialogue} et {cause}
+  list-erreur: '&c{dialogue} &7: &cen erreur&7 ({cause})'
+
+succes:
+  recharge: 'Configuration &arechargée&7.'
+  ouvert: 'Dialogue &e{dialogue} &7ouvert pour &e{joueur}&7.'
+
+info:
+  menu-redemarrage: 'L''aspect du menu SkyHand a changé : il ne sera mis à jour qu''au &eprochain redémarrage&7.'
+  # {charges} et {erreurs} : nombre de dialogues chargés et en erreur
+  reload-bilan: '&e{charges}&7 dialogue(s) chargé(s), &e{erreurs}&7 en erreur.'
+  list-titre: 'Menu et dialogues de &eSHDialogs&7 :'
+  # {boutons}, {echap} et {rapides} (oui ou non)
+  list-menu: 'Menu SkyHand : &e{boutons}&7 boutons, écran Échap {echap}, actions rapides {rapides}.'
+  list-menu-desactive: 'Menu SkyHand : &edésactivé&7.'
+  list-vide: 'Aucun dialogue dans la section &edialogues&7 du config.yml.'
+  # {dialogue}, {titre}, {boutons} et {permission}
+  list-dialogue: '&a{dialogue} &7: {titre} &7({boutons} boutons, permission : {permission})'
+  list-desactive: '&e{dialogue} &7: désactivé (&eactif: false&7)'
+
+avertissement:
+  # Client sans dialogues (avant la 1.21.6) : pas de repli, les menus DeluxeMenus gardent leur texte classique.
+  # L'avertissement va à celui qui lance la commande : au joueur lui-même, ou au staff / à la console s'ils l'ouvrent à un autre joueur.
+  version-ancienne: 'Votre version de Minecraft ne gère pas les dialogues : il faut la &e1.21.6 &7ou plus.'
+  version-ancienne-autre: 'Le joueur &e{joueur} &7ne gère pas les dialogues (&e1.21.6 &7minimum).'

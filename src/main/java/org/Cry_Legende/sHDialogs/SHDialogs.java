@@ -12,7 +12,10 @@ import io.papermc.paper.registry.keys.tags.DialogTagKeys;
 import net.kyori.adventure.key.Key;
 import org.bukkit.Registry;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -20,6 +23,7 @@ import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -28,10 +32,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 public final class SHDialogs extends JavaPlugin implements Listener {
 
-    static final String PERMISSION_ADMIN = "shdialogs.admin";
+    static final String PERMISSION_RELOAD = "shdialogs.admin.reload";
+    static final String PERMISSION_LIST = "shdialogs.admin.list";
     static final String PERMISSION_MENU = "shdialogs.menu";
     static final String PERMISSION_OPEN = "shdialogs.open";
     static final String PERMISSION_OPEN_OTHERS = "shdialogs.open.others";
@@ -43,6 +49,8 @@ public final class SHDialogs extends JavaPlugin implements Listener {
     private volatile MenuConfig menu;
     private volatile Map<String, DialogueConfig> dialogues = Map.of();
     private volatile Map<String, Dialog> dialogs = Map.of();
+    private volatile List<DialogueRow> rows = List.of();
+    private volatile ConfigurationSection words;
     private String registeredMenuSignature = "";
     private boolean viaVersion;
 
@@ -66,28 +74,171 @@ public final class SHDialogs extends JavaPlugin implements Listener {
     }
 
     /**
-     * Relit config.yml. Le dialogue du menu, lui, reste celui du démarrage : seules les commandes, permissions et messages changent.
+     * Démarrage : relit config.yml et messages.yml sans rien exiger (un fichier illisible laisse les valeurs du jar).
+     * Le dialogue du menu, lui, reste celui du démarrage : seules les commandes, permissions et messages changent ensuite.
      */
     private void loadConfiguration() {
         reloadConfig();
-        FileConfiguration config = getConfig();
-        messages = new Messages(config);
-        menu = MenuConfig.read(config, getLogger()::warning);
-        dialogues = DialogueConfig.readAll(config, config.getString("menu.bouton-fermer", "&c⤾ &fFermer"), getLogger()::warning);
-        dialogs = buildDialogs(dialogues);
+        YamlConfiguration messageFile;
+        try {
+            messageFile = MessagesFile.read(this);
+        } catch (IOException | InvalidConfigurationException e) {
+            getLogger().severe("messages.yml illisible, textes du jar utilisés : " + describe(e));
+            messageFile = MessagesFile.jarOnly(this);
+        }
+        apply(getConfig(), messageFile);
+    }
+
+    /**
+     * /shdialogs reload : lit config.yml et messages.yml en mode strict avant de rien remplacer. Renvoie null si tout est
+     * lu, sinon « fichier : erreur » et l'ancienne configuration reste en mémoire.
+     */
+    private String reloadAll() {
+        FileConfiguration candidate;
+        try {
+            candidate = ConfigFiles.loadStrict(getDataFolder().toPath());
+        } catch (IOException | InvalidConfigurationException e) {
+            return "config.yml : " + describe(e);
+        }
+        YamlConfiguration messageFile;
+        try {
+            messageFile = MessagesFile.read(this);
+        } catch (IOException | InvalidConfigurationException e) {
+            return MessagesFile.NAME + " : " + describe(e);
+        }
+        apply(candidate, messageFile);
+        return null;
+    }
+
+    private static String describe(Exception e) {
+        String text = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+        text = text.replaceAll("\\s*\\R\\s*", " ").trim();
+        return text.length() > 240 ? text.substring(0, 240) + "..." : text;
+    }
+
+    /**
+     * Construit messages, menu, dialogues et dialogues Paper depuis la configuration lue, puis les remplace d'un bloc.
+     */
+    private void apply(FileConfiguration config, ConfigurationSection messageFile) {
+        List<String> problems = new ArrayList<>();
+        Consumer<String> warn = message -> {
+            getLogger().warning(message);
+            problems.add(message);
+        };
+        Messages newMessages = new Messages(messageFile);
+        MenuConfig newMenu = MenuConfig.read(config, warn);
+        Map<String, DialogueConfig> newDialogues = DialogueConfig.readAll(config, config.getString("menu.bouton-fermer", "&c⤾ &fFermer"), warn);
+        Map<String, Dialog> newDialogs = buildDialogs(newDialogues, warn);
+        List<DialogueRow> newRows = describeDialogues(config, newDialogues, newDialogs, problems);
+        words = messageFile;
+        messages = newMessages;
+        menu = newMenu;
+        dialogues = newDialogues;
+        dialogs = newDialogs;
+        rows = newRows;
+    }
+
+    /**
+     * Une ligne par dialogue de la section « dialogues » : chargé, désactivé ou en erreur (avec sa cause).
+     */
+    private List<DialogueRow> describeDialogues(FileConfiguration config, Map<String, DialogueConfig> parsed, Map<String, Dialog> built,
+                                                List<String> problems) {
+        List<DialogueRow> result = new ArrayList<>();
+        ConfigurationSection section = config.getConfigurationSection("dialogues");
+        if (section == null) {
+            return result;
+        }
+        for (String id : section.getKeys(false)) {
+            ConfigurationSection d = section.getConfigurationSection(id);
+            if (d == null) {
+                continue;
+            }
+            if (!d.getBoolean("actif", true)) {
+                result.add(new DialogueRow(id, DialogueRow.State.DESACTIVE, "", 0, "", ""));
+            } else if (built.containsKey(id) && parsed.containsKey(id)) {
+                DialogueConfig dialogue = parsed.get(id);
+                result.add(new DialogueRow(id, DialogueRow.State.OK, Texts.stripColors(dialogue.title()), dialogue.buttons().size(),
+                        dialogue.permission(), ""));
+            } else {
+                String marker = "« " + id + " »";
+                String cause = problems.stream().filter(problem -> problem.contains(marker)).findFirst().orElse("non construit");
+                result.add(new DialogueRow(id, DialogueRow.State.ERREUR, "", 0, "", cause));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Ligne de /shdialogs list.
+     */
+    private record DialogueRow(String id, State state, String title, int buttons, String permission, String cause) {
+        enum State {
+            OK, DESACTIVE, ERREUR
+        }
+    }
+
+    /**
+     * Texte de la section « mots » de messages.yml (oui, non, aucune...), sans préfixe.
+     */
+    private String word(String key) {
+        return words == null ? key : words.getString("mots." + key, key);
+    }
+
+    private void reloadCommand(CommandSender sender) {
+        String error = reloadAll();
+        if (error != null) {
+            String[] parts = error.split(" : ", 2);
+            messages.send(sender, Messages.Type.ERREUR, "reload-erreur", "fichier", parts[0], "erreur", parts.length > 1 ? parts[1] : "");
+            return;
+        }
+        messages.send(sender, Messages.Type.SUCCES, "recharge");
+        long loaded = rows.stream().filter(row -> row.state() == DialogueRow.State.OK).count();
+        long failed = rows.stream().filter(row -> row.state() == DialogueRow.State.ERREUR).count();
+        messages.send(sender, failed > 0 ? Messages.Type.AVERTISSEMENT : Messages.Type.INFO, "reload-bilan",
+                "charges", String.valueOf(loaded), "erreurs", String.valueOf(failed));
+        if (!menu.signature().equals(registeredMenuSignature)) {
+            messages.send(sender, Messages.Type.INFO, "menu-redemarrage");
+        }
+    }
+
+    /**
+     * /shdialogs list : le menu et chaque dialogue de la section « dialogues » avec son état.
+     */
+    private void listCommand(CommandSender sender) {
+        MenuConfig current = menu;
+        messages.send(sender, Messages.Type.INFO, "list-titre");
+        if (current.enabled()) {
+            messages.send(sender, Messages.Type.INFO, "list-menu", "boutons", String.valueOf(current.buttons().size()),
+                    "echap", word(current.pauseScreen() ? "oui" : "non"), "rapides", word(current.quickActions() ? "oui" : "non"));
+        } else {
+            messages.send(sender, Messages.Type.INFO, "list-menu-desactive");
+        }
+        List<DialogueRow> current2 = rows;
+        if (current2.isEmpty()) {
+            messages.send(sender, Messages.Type.INFO, "list-vide");
+            return;
+        }
+        for (DialogueRow row : current2) {
+            switch (row.state()) {
+                case OK -> messages.send(sender, Messages.Type.INFO, "list-dialogue", "dialogue", row.id(), "titre", row.title(),
+                        "boutons", String.valueOf(row.buttons()), "permission", row.permission().isEmpty() ? word("aucune") : row.permission());
+                case DESACTIVE -> messages.send(sender, Messages.Type.INFO, "list-desactive", "dialogue", row.id());
+                case ERREUR -> messages.send(sender, Messages.Type.ERREUR, "list-erreur", "dialogue", row.id(), "cause", row.cause());
+            }
+        }
     }
 
     /**
      * Construit les dialogues Paper de la section « dialogues ». Un dialogue qui échoue est signalé dans la console et ne
      * s'ouvre pas (le joueur reçoit un message d'erreur).
      */
-    private Map<String, Dialog> buildDialogs(Map<String, DialogueConfig> configs) {
+    private Map<String, Dialog> buildDialogs(Map<String, DialogueConfig> configs, Consumer<String> warn) {
         Map<String, Dialog> built = new HashMap<>();
         for (DialogueConfig dialogue : configs.values()) {
             try {
                 built.put(dialogue.id(), DialogueDialog.create(dialogue));
             } catch (RuntimeException e) {
-                getLogger().warning("Dialogue « " + dialogue.id() + " » non construit : " + e);
+                warn.accept("Dialogue « " + dialogue.id() + " » non construit : " + e);
             }
         }
         return Map.copyOf(built);
@@ -334,9 +485,27 @@ public final class SHDialogs extends JavaPlugin implements Listener {
     }
 
     /**
-     * /shdialogs reload | menu | open &lt;dialogue&gt; [joueur]
+     * /shdialogs reload | list | menu | open &lt;dialogue&gt; [joueur]
      */
     private final class AdminCommand implements BasicCommand {
+
+        /** Sous-commandes que l'expéditeur a le droit d'utiliser. */
+        private List<String> allowed(CommandSender sender) {
+            List<String> subs = new ArrayList<>();
+            if (sender.hasPermission(PERMISSION_RELOAD)) {
+                subs.add("reload");
+            }
+            if (sender.hasPermission(PERMISSION_LIST)) {
+                subs.add("list");
+            }
+            if (sender.hasPermission(PERMISSION_MENU)) {
+                subs.add("menu");
+            }
+            if (sender.hasPermission(PERMISSION_OPEN) || sender.hasPermission(PERMISSION_OPEN_OTHERS)) {
+                subs.add("open");
+            }
+            return subs;
+        }
 
         @Override
         public void execute(CommandSourceStack source, String[] args) {
@@ -344,15 +513,17 @@ public final class SHDialogs extends JavaPlugin implements Listener {
             try {
                 String sub = args.length >= 1 ? args[0].toLowerCase(Locale.ROOT) : "";
                 if (sub.equals("reload") && args.length == 1) {
-                    if (!sender.hasPermission(PERMISSION_ADMIN)) {
+                    if (!sender.hasPermission(PERMISSION_RELOAD)) {
                         messages.send(sender, Messages.Type.ERREUR, "permission");
                         return;
                     }
-                    loadConfiguration();
-                    messages.send(sender, Messages.Type.SUCCES, "recharge");
-                    if (!menu.signature().equals(registeredMenuSignature)) {
-                        messages.send(sender, Messages.Type.INFO, "menu-redemarrage");
+                    reloadCommand(sender);
+                } else if (sub.equals("list") && args.length == 1) {
+                    if (!sender.hasPermission(PERMISSION_LIST)) {
+                        messages.send(sender, Messages.Type.ERREUR, "permission");
+                        return;
                     }
+                    listCommand(sender);
                 } else if (sub.equals("menu") && args.length == 1) {
                     if (!sender.hasPermission(PERMISSION_MENU)) {
                         messages.send(sender, Messages.Type.ERREUR, "permission");
@@ -366,7 +537,12 @@ public final class SHDialogs extends JavaPlugin implements Listener {
                 } else if (sub.equals("open")) {
                     messages.send(sender, Messages.Type.ERREUR, "open-usage");
                 } else {
-                    messages.send(sender, Messages.Type.ERREUR, "usage");
+                    List<String> subs = allowed(sender);
+                    if (subs.isEmpty()) {
+                        messages.send(sender, Messages.Type.ERREUR, "permission");
+                    } else {
+                        messages.send(sender, Messages.Type.ERREUR, "usage-liste", "sous-commandes", String.join("|", subs));
+                    }
                 }
             } catch (RuntimeException e) {
                 getLogger().warning("/shdialogs : " + e);
@@ -399,14 +575,10 @@ public final class SHDialogs extends JavaPlugin implements Listener {
                 return List.of();
             }
             String start = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
-            if (sender.hasPermission(PERMISSION_ADMIN) && "reload".startsWith(start)) {
-                options.add("reload");
-            }
-            if (sender.hasPermission(PERMISSION_MENU) && "menu".startsWith(start)) {
-                options.add("menu");
-            }
-            if ((sender.hasPermission(PERMISSION_OPEN) || sender.hasPermission(PERMISSION_OPEN_OTHERS)) && "open".startsWith(start)) {
-                options.add("open");
+            for (String sub : allowed(sender)) {
+                if (sub.startsWith(start)) {
+                    options.add(sub);
+                }
             }
             return options;
         }

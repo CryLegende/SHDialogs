@@ -15,7 +15,16 @@ dependencies:
 
 permissions:
   shdialogs.admin:
+    description: Toutes les sous-commandes d'administration de /shdialogs.
+    default: op
+    children:
+      shdialogs.admin.reload: true
+      shdialogs.admin.list: true
+  shdialogs.admin.reload:
     description: Recharger la configuration (/shdialogs reload).
+    default: op
+  shdialogs.admin.list:
+    description: Lister les dialogues chargés et ceux en erreur (/shdialogs list).
     default: op
   shdialogs.menu:
     description: Ouvrir le menu SkyHand par commande (/shdialogs menu), outil de test et de secours.

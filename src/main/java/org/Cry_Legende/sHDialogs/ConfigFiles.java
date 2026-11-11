@@ -1,5 +1,6 @@
 package org.Cry_Legende.sHDialogs;
 
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.IOException;
@@ -17,6 +18,22 @@ import java.nio.file.Path;
 final class ConfigFiles {
 
     private ConfigFiles() {
+    }
+
+    /**
+     * Lit config.yml en mode strict (une erreur de syntaxe est levée au lieu d'être avalée), complété par les clés du jar.
+     */
+    static YamlConfiguration loadStrict(Path dataDirectory) throws IOException, InvalidConfigurationException {
+        Path file = dataDirectory.resolve("config.yml");
+        YamlConfiguration config = new YamlConfiguration();
+        config.load(file.toFile());
+        try (InputStream in = ConfigFiles.class.getResourceAsStream("/config.yml")) {
+            if (in != null) {
+                Reader reader = new InputStreamReader(in, StandardCharsets.UTF_8);
+                config.setDefaults(YamlConfiguration.loadConfiguration(reader));
+            }
+        }
+        return config;
     }
 
     static YamlConfiguration load(Path dataDirectory) throws IOException {

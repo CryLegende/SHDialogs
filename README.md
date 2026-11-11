@@ -33,7 +33,7 @@ Détails à connaître :
 
 ### Dialogues à la demande
 
-La section `dialogues` de `config.yml` décrit autant de dialogues que voulu (titre, texte, boutons « url » ou « commande »). `/shdialogs open <dialogue>` en ouvre un : c'est ce que lancent les menus DeluxeMenus avec `[player] shdialogs open vote`, à la suite du texte classique du menu (l'adresse reste posée dans le chat). Dialogues fournis : `vote`, `discord`, `discord-liaison`, `nitro`, `boutique`, `grades`, `reglement`.
+La section `dialogues` de `config.yml` décrit autant de dialogues que voulu (titre, texte, boutons « url » ou « commande »). `/shdialogs open <dialogue>` en ouvre un : c'est ce que lancent les menus DeluxeMenus avec `[player] shdialogs open vote`, à la suite du texte classique du menu (l'adresse reste posée dans le chat). Dialogues fournis : `vote`, `discord`, `discord-liaison`, `nitro`, `boutique`, `grades`, `reglement`, `bienvenue`, `ami`.
 
 - **Rechargés sans redémarrage** : contrairement au menu SkyHand, ils sont construits à l'exécution, `/shdialogs reload` suffit pour ajouter ou modifier un dialogue.
 - **Une adresse par site** : changez-la dans le dialogue, tous les menus qui l'ouvrent la suivent.
@@ -51,38 +51,46 @@ Utilisé sur : **Opale** (Purpur/DivineMC 1.21.11, Java 25).
 
 | Commande | Alias | Description | Permission |
 |---|---|---|---|
-| `/shdialogs reload` | — | Recharge la configuration. | `shdialogs.admin` |
-| `/shdialogs menu` | — | Ouvre le menu SkyHand à la demande (outil de test du staff). | `shdialogs.menu` |
+| `/shdialogs reload` | — | Relit `config.yml` et `messages.yml`. Si l'un des deux est invalide, rien n'est remplacé et le fichier fautif est indiqué. | `shdialogs.admin.reload` |
+| `/shdialogs list` | — | Liste le menu et les dialogues : chargés, désactivés ou en erreur (avec la cause). | `shdialogs.admin.list` |
+| `/shdialogs menu` | — | Ouvre le menu SkyHand à la demande (outil de test du staff, joueur seulement). | `shdialogs.menu` |
 | `/shdialogs open <dialogue> [joueur]` | — | Ouvre un dialogue de la section `dialogues` (à soi-même, ou à un joueur pour la console et le staff). | `shdialogs.open` (tous), `shdialogs.open.others` (op) |
+
+La console peut utiliser `reload`, `list` et `open` avec un joueur.
 
 ## Permissions
 
 | Permission | Description | Par défaut |
 |---|---|---|
-| `shdialogs.admin` | Recharger la configuration. | `op` |
+| `shdialogs.admin` | Toutes les sous-commandes d'administration. | `op` |
+| `shdialogs.admin.reload` | `/shdialogs reload`. | `op` |
+| `shdialogs.admin.list` | `/shdialogs list`. | `op` |
 | `shdialogs.menu` | Ouvrir le menu SkyHand par commande. | `op` |
 | `shdialogs.open` | Ouvrir un dialogue pour soi-même (menus DeluxeMenus). | tous |
 | `shdialogs.open.others` | Ouvrir un dialogue à un autre joueur. | `op` |
 
+Le champ `permission` d'un bouton ou d'un dialogue du `config.yml` accepte n'importe quel nœud ; vide, il est ouvert à tous.
+
 ## Configuration
 
-Fichier par défaut repris dans le jar ; il est créé au premier démarrage s'il n'existe pas. Cliquez sur un fichier pour l'ouvrir :
+Fichiers par défaut repris dans le jar ; ils sont créés au premier démarrage s'ils n'existent pas. Si `messages.yml` manque alors que `config.yml` contient encore les anciennes sections `prefixe`, `couleurs` et `messages`, il est créé à partir de ces textes. Cliquez sur un fichier pour l'ouvrir :
 
 <pre>
 plugins/SHDialogs/
-└── <a href="src/main/resources/config.yml">config.yml</a>
+├── <a href="src/main/resources/config.yml">config.yml</a>
+│   ├── menu                     menu SkyHand (figé au démarrage, sauf les commandes)
+│   │   ├── actif, ecran-echap, actions-rapides
+│   │   ├── titre, titre-bouton, texte, colonnes, largeur-bouton, bouton-fermer
+│   │   └── boutons              un bloc par bouton : libelle, infobulle, commande (ou url), permission, actif
+│   │       ├── ile, general, warps, reglement        navigation
+│   │       ├── boutique, metiers, hdv                économie
+│   │       ├── quetes, vote, skyhand                 progression
+│   │       └── discord, site, voter, boutique-web    liens web (bouton « url »)
+│   └── dialogues                dialogues à la demande (rechargés par /shdialogs reload)
+│       └── vote, discord, discord-liaison, nitro, boutique, grades, reglement, bienvenue, ami
+└── <a href="src/main/resources/messages.yml">messages.yml</a>
     ├── prefixe, couleurs        préfixe des messages et couleur par type (erreur, succès, info)
-    ├── menu                     menu SkyHand (figé au démarrage, sauf les commandes)
-    │   ├── actif, ecran-echap, actions-rapides
-    │   ├── titre, titre-bouton, texte, colonnes, largeur-bouton, bouton-fermer
-    │   └── boutons              un bloc par bouton : libelle, infobulle, commande (ou url), permission, actif
-    │       ├── ile, general, warps, reglement        navigation
-    │       ├── boutique, metiers, hdv                économie
-    │       ├── quetes, vote, skyhand                 progression
-    │       └── discord, site, voter, boutique-web    liens web (bouton « url »)
-    ├── dialogues                dialogues à la demande (rechargés par /shdialogs reload)
-    │   └── vote, discord, discord-liaison, nitro, boutique, grades, reglement
-    └── messages                 messages du chat, par type (erreur, succes, info)
+    └── erreur, succes, info, avertissement    messages du chat, par type
 </pre>
 
 ## Compilation
