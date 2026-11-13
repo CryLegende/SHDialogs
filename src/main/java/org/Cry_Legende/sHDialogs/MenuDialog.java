@@ -9,7 +9,9 @@ import io.papermc.paper.registry.data.dialog.DialogRegistryEntry;
 import io.papermc.paper.registry.data.dialog.action.DialogAction;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import io.papermc.paper.registry.data.dialog.type.DialogType;
+import io.papermc.paper.registry.data.dialog.type.MultiActionType;
 import net.kyori.adventure.key.Key;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 
 import java.util.ArrayList;
@@ -34,10 +36,12 @@ final class MenuDialog {
 
     static void fill(DialogRegistryEntry.Builder builder, MenuConfig menu) {
         List<DialogBody> body = new ArrayList<>();
+        body.add(DialogBody.plainMessage(Texts.legacy(menu.title()), BODY_WIDTH));
         if (!menu.text().isEmpty()) {
             body.add(DialogBody.plainMessage(Texts.lines(menu.text()), BODY_WIDTH));
         }
-        DialogBase base = DialogBase.builder(Texts.legacy(menu.title()))
+        // titre vide : l'icône d'avertissement du client reste seule sur sa ligne, le titre est la première ligne du corps
+        DialogBase base = DialogBase.builder(Component.empty())
                 .externalTitle(Texts.legacy(menu.buttonTitle()))
                 .canCloseWithEscape(true)
                 .pause(false)
@@ -52,12 +56,17 @@ final class MenuDialog {
             if (!button.tooltip().isEmpty()) {
                 b.tooltip(Texts.lines(button.tooltip()));
             }
-            b.action(button.isUrl()
-                    ? DialogAction.staticAction(ClickEvent.openUrl(button.url()))
-                    : DialogAction.customClick(button.clickKey(), null));
+            if (button.isUrl()) {
+                b.action(DialogAction.staticAction(ClickEvent.openUrl(button.url())));
+            } else if (!button.close()) {
+                b.action(DialogAction.customClick(button.clickKey(), null));
+            }
             buttons.add(b.build());
         }
-        ActionButton exit = ActionButton.builder(Texts.legacy(menu.closeLabel())).width(menu.buttonWidth()).build();
-        builder.base(base).type(DialogType.multiAction(buttons).columns(menu.columns()).exitAction(exit).build());
+        MultiActionType.Builder type = DialogType.multiAction(buttons).columns(menu.columns());
+        if (!menu.closeLabel().isBlank()) {
+            type.exitAction(ActionButton.builder(Texts.legacy(menu.closeLabel())).width(menu.buttonWidth()).build());
+        }
+        builder.base(base).type(type.build());
     }
 }

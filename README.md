@@ -18,10 +18,11 @@
 
 Rendu aux couleurs du serveur (même charte que les menus DeluxeMenus) :
 
-- **Titre** `« SkyHand » Menu`, puis deux lignes grises avec les mots clés en jaune, dont une astuce discrète.
+- **Titre** `« SkyHand » Menu` en première ligne du texte (la barre de titre reste vide : l'icône d'avertissement du client y est seule), puis deux lignes grises avec les mots clés en jaune, dont une astuce discrète.
 - **Boutons** sur 2 colonnes, sans gras, d'une seule couleur par thème : aqua pour la navigation (Mon île, Menu général, Warps, Règlement), vert pour l'économie (Boutique, Métiers, Hôtel des ventes), rose pour la progression (Quêtes, Votes et récompenses, Fonctionnalités uniques). Les libellés évitent le gris foncé, illisible sur le fond gris des boutons.
 - **Infobulles** structurées comme celles des menus : phrase encadrée `« ... »` aux couleurs du thème, ligne `Commande: /xxx`, puis `(( Cliquez pour ouvrir ))`.
 - **Bouton de fermeture** `⤾ Fermer`, comme le bouton Retour des menus.
+- **Fond noir** : le joueur est aveuglé (effet Cécité) tant qu'un dialogue ouvert par le serveur est affiché, le texte se lit mieux que sur le décor. Le client ne prévient pas le serveur quand il ferme un dialogue : l'effet est retiré dès que le joueur tourne la caméra, se déplace ou ouvre un inventaire. Option `aveugler-pendant-dialogues`. Le menu ouvert depuis l'écran Échap ne passe pas par le serveur et n'est pas concerné.
 
 Détails à connaître :
 
@@ -39,6 +40,7 @@ La section `dialogues` de `config.yml` décrit autant de dialogues que voulu (ti
 - **Une adresse par site** : changez-la dans le dialogue, tous les menus qui l'ouvrent la suivent.
 - **Clients plus anciens que la 1.21.6** : pas de repli, seulement un avertissement envoyé à celui qui a lancé la commande (le joueur lui-même, ou le staff / la console s'ils l'ont ouvert à quelqu'un d'autre). Le texte classique du menu DeluxeMenus leur suffit.
 - **Boutons de commande** : lancés par le joueur comme ceux du menu, la commande est retrouvée dans `config.yml` d'après les identifiants du dialogue et du bouton.
+- **Boutons « fermer »** (`fermer: true`) : ferment simplement le dialogue. Avec `bouton-fermer: ''`, le dialogue n'a plus de bouton en bas : c'est ainsi que `bienvenue` place « C'est parti ! » en premier, au-dessus de « Je joue avec un ami » et « Tutoriel détaillé ».
 - **Pas de `[close]` dans les menus** : un `[close]` laisse un instant sans écran entre le menu et le dialogue (clignotement). Le menu reste affiché, et SHDialogs le ferme au tick suivant, juste avant d'ouvrir le dialogue (même tick, même image côté client).
 
 Utilisé sur : **Opale** (Purpur/DivineMC 1.21.11, Java 25).
@@ -78,10 +80,11 @@ Fichiers par défaut repris dans le jar ; ils sont créés au premier démarrage
 <pre>
 plugins/SHDialogs/
 ├── <a href="src/main/resources/config.yml">config.yml</a>
+│   ├── aveugler-pendant-dialogues   effet Cécité tant qu'un dialogue est affiché
 │   ├── menu                     menu SkyHand (figé au démarrage, sauf les commandes)
 │   │   ├── actif, ecran-echap, actions-rapides
 │   │   ├── titre, titre-bouton, texte, colonnes, largeur-bouton, bouton-fermer
-│   │   └── boutons              un bloc par bouton : libelle, infobulle, commande (ou url), permission, actif
+│   │   └── boutons              un bloc par bouton : libelle, infobulle, commande (ou url, ou fermer), permission, actif
 │   │       ├── ile, general, warps, reglement        navigation
 │   │       ├── boutique, metiers, hdv                économie
 │   │       ├── quetes, vote, skyhand                 progression

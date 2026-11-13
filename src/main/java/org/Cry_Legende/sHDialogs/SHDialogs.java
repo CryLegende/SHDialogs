@@ -53,11 +53,13 @@ public final class SHDialogs extends JavaPlugin implements Listener {
     private volatile ConfigurationSection words;
     private String registeredMenuSignature = "";
     private boolean viaVersion;
+    private DialogBlindness blindness;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         viaVersion = getServer().getPluginManager().isPluginEnabled("ViaVersion");
+        blindness = new DialogBlindness(this, true);
         loadConfiguration();
         // ce que le bootstrap a enregistré au démarrage : base de comparaison pour /shdialogs reload
         registeredMenuSignature = menu.signature();
@@ -71,6 +73,9 @@ public final class SHDialogs extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         lastMenuClick.clear();
+        if (blindness != null) {
+            blindness.shutdown();
+        }
     }
 
     /**
@@ -136,6 +141,7 @@ public final class SHDialogs extends JavaPlugin implements Listener {
         dialogues = newDialogues;
         dialogs = newDialogs;
         rows = newRows;
+        blindness.setEnabled(config.getBoolean("aveugler-pendant-dialogues", true));
     }
 
     /**
@@ -361,7 +367,7 @@ public final class SHDialogs extends JavaPlugin implements Listener {
             if (last != null && now - last < MENU_CLICK_INTERVAL_MS) {
                 return;
             }
-            if (button == null || button.isUrl()) {
+            if (button == null || button.isUrl() || button.close()) {
                 messages.send(player, Messages.Type.ERREUR, "bouton-indisponible");
                 return;
             }
@@ -388,7 +394,7 @@ public final class SHDialogs extends JavaPlugin implements Listener {
         } else if (!supportsDialogs(player, 771)) {
             messages.send(player, Messages.Type.ERREUR, "version-ancienne");
         } else {
-            player.showDialog(dialog);
+            blindness.show(player, dialog);
         }
     }
 
@@ -467,7 +473,7 @@ public final class SHDialogs extends JavaPlugin implements Listener {
                 if (target.getOpenInventory().getType() != InventoryType.CRAFTING) {
                     target.closeInventory();
                 }
-                target.showDialog(dialog);
+                blindness.show(target, dialog);
             } catch (RuntimeException e) {
                 getLogger().warning("Dialogue non affiché à " + target.getName() + " : " + e);
                 messages.send(sender, Messages.Type.ERREUR, "erreur-interne");

@@ -31,9 +31,17 @@
 # Codes de couleur : &a, &l... et &#rrggbb. Chaque commande est exécutée PAR LE JOUEUR, jamais par la console.
 #
 # Charte de rendu (même esprit que les menus DeluxeMenus du serveur) :
-#   - le fond du dialogue est sombre : &8 est lisible pour les cadres « » du titre et du texte ;
+#   - le titre est la première ligne du texte : la barre de titre reste vide, l'icône d'avertissement du client y est seule ;
+#   - le joueur est aveuglé tant que le dialogue est affiché (voir aveugler-pendant-dialogues) : le fond est noir ;
+#   - &8 est lisible pour les cadres « » du titre et du texte ;
 #   - les BOUTONS ont un fond gris moyen : jamais de &8 ni de &0 dans un libellé de bouton, couleurs claires ou blanc ;
 #   - les infobulles ont le fond sombre des infobulles du jeu : &8 y est lisible.
+
+# Effet Cécité tant qu'un dialogue de ce plugin est affiché : le texte se lit sur fond noir. Il est retiré dès que le joueur
+# tourne la caméra, se déplace ou ouvre un inventaire (le client ne prévient pas le serveur quand il ferme un dialogue).
+# Un joueur déjà aveugle pour une autre raison n'est pas touché. Le menu ouvert depuis l'écran Échap ne passe pas par le
+# serveur : il n'est pas concerné.
+aveugler-pendant-dialogues: true
 
 # ---------------------------------------------------------------------------------------------------------------
 # Menu SkyHand
@@ -59,6 +67,7 @@ menu:
   #   infobulle  : lignes affichées au survol (facultatif) : phrase encadrée, commande, invitation au clic
   #   commande   : commande lancée par le joueur, comme s'il la tapait dans le chat
   #   url        : à la place de commande, ouvre une adresse http(s) (le client demande confirmation)
+  #   fermer     : true à la place de commande et url, le bouton ferme simplement le dialogue
   #   permission : permission nécessaire (facultatif, vide = tout le monde)
   #   actif      : false pour masquer le bouton
   boutons:
@@ -234,9 +243,10 @@ menu:
 # ---------------------------------------------------------------------------------------------------------------
 # Dialogues à la demande : /shdialogs open <dialogue> [joueur]
 # ---------------------------------------------------------------------------------------------------------------
-# Chaque dialogue a un titre, un texte (lignes) et des boutons (mêmes champs que menu.boutons : libelle, infobulle, url ou
-# commande, permission, actif). En option : colonnes (1), largeur-bouton (200), bouton-fermer, permission (du dialogue
-# entier) et actif. Une seule adresse par site : changez-la ici, tous les menus qui ouvrent le dialogue la suivent.
+# Chaque dialogue a un titre (affiché en première ligne du texte), un texte (lignes) et des boutons (mêmes champs que
+# menu.boutons : libelle, infobulle, url, commande ou fermer, permission, actif). En option : colonnes (1), largeur-bouton
+# (200), bouton-fermer (bouton tout en bas ; '' = aucun, Échap ferme toujours le dialogue), permission (du dialogue entier)
+# et actif. Une seule adresse par site : changez-la ici, tous les menus qui ouvrent le dialogue la suivent.
 dialogues:
   vote:
     titre: '&7&l« &d&lVote &8&l» &7Soutenir SkyHand'
@@ -269,12 +279,12 @@ dialogues:
           - ''
           - '&7&o(( &9&oCliquez pour ouvrir &7&o))'
         url: 'https://discord.skyhand.fr'
-  # Pour les joueurs dont le compte n'est pas encore lié : rejoindre le Discord puis lancer /liaison
+  # Pour les joueurs dont le compte n'est pas encore lié : /liaison donne un lien, un clic suffit
   discord-liaison:
     titre: '&7&l« &9&lDiscord &8&l» &7Liaison de compte'
     texte:
-      - '&7Rejoignez le &9Discord &7puis liez votre compte avec'
-      - '&e/liaison &7pour recevoir vos &9rôles &7et vos notifications.'
+      - '&7Liez votre compte &9Discord &7en un clic : lancez &e/liaison'
+      - '&7puis cliquez le lien. Vous rejoignez le &9Discord &7automatiquement.'
     boutons:
       rejoindre:
         libelle: '&9Rejoindre le Discord'
@@ -374,14 +384,25 @@ dialogues:
   bienvenue:
     titre: '&7&l« &e&lSkyHand &8&l» &7Bienvenue !'
     texte:
-      - '&7Ici, c''est du &eSkyBlock &7: tu démarres sur une petite'
-      - '&7île perdue dans le vide. Coupe ton &earbre&7, mine ton'
-      - '&egénérateur de pierre &7et agrandis ton île.'
-      - ''
-      - '&7Tes &equêtes &7te guident pas à pas (&e/quest&7).'
       - '&aTon île est prête !'
-    bouton-fermer: '&a&lC''est parti !'
+      - '&7Tu démarres sur une petite île perdue dans le vide :'
+      - '&7coupe ton &earbre&7, mine ton &egénérateur de pierre &7et'
+      - '&7agrandis ton île. Tes &equêtes &7(&e/quest&7) te guident.'
+      - ''
+      - '&aC''est parti &7: tu joues tout de suite sur ton île.'
+      - '&bJe joue avec un ami &7: comment rejoindre son île.'
+      - '&eTutoriel détaillé &7: facultatif, une route sous'
+      - '&7le spawn qui présente les bases du serveur.'
+    # Pas de bouton en bas : « C'est parti », en premier, ferme le dialogue
+    bouton-fermer: ''
     boutons:
+      parti:
+        libelle: '&a&lC''est parti !'
+        infobulle:
+          - '&8&l« &7Commencer à jouer sur ton &aîle &8&l»'
+          - ''
+          - '&7&o(( &a&oClique pour fermer &7&o))'
+        fermer: true
       ami:
         libelle: '&bJe joue avec un ami'
         infobulle:

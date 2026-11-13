@@ -20,9 +20,9 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, St
                   List<String> text, int columns, int buttonWidth, String closeLabel, List<Button> buttons) {
 
     /**
-     * Un bouton du menu : soit une commande joueur, soit une adresse web.
+     * Un bouton du menu : une commande joueur, une adresse web, ou rien (bouton « fermer » : le client referme le dialogue).
      */
-    record Button(String id, String label, List<String> tooltip, String command, String url, String permission) {
+    record Button(String id, String label, List<String> tooltip, String command, String url, String permission, boolean close) {
 
         boolean isUrl() {
             return url != null;
@@ -100,6 +100,9 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, St
         }
         List<String> tooltip = b.getStringList("infobulle");
         String permission = b.getString("permission", "");
+        if (b.getBoolean("fermer", false)) {
+            return new Button(id, label, tooltip, null, null, "", true);
+        }
         String url = b.getString("url", "");
         if (!url.isBlank()) {
             String checked = checkUrl(url.trim());
@@ -107,14 +110,14 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, St
                 warn.accept("Bouton « " + id + " » ignoré : url invalide (http ou https attendu) : " + url);
                 return null;
             }
-            return new Button(id, label, tooltip, null, checked, permission == null ? "" : permission);
+            return new Button(id, label, tooltip, null, checked, permission == null ? "" : permission, false);
         }
         String command = cleanCommand(b.getString("commande"));
         if (command == null) {
             warn.accept("Bouton « " + id + " » ignoré : commande manquante ou invalide.");
             return null;
         }
-        return new Button(id, label, tooltip, command, null, permission == null ? "" : permission);
+        return new Button(id, label, tooltip, command, null, permission == null ? "" : permission, false);
     }
 
     /**
@@ -171,7 +174,7 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, St
                 .append(closeLabel);
         for (Button b : buttons) {
             sb.append('\n').append(b.id().toLowerCase(Locale.ROOT)).append('|').append(b.label()).append('|').append(b.tooltip())
-                    .append('|').append(b.url());
+                    .append('|').append(b.url()).append('|').append(b.close());
         }
         return sb.toString();
     }
