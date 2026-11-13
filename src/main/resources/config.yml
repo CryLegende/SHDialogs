@@ -60,7 +60,7 @@ menu:
   # Texte du bouton dans l'écran Échap et dans la liste des actions rapides (court, lisible sur fond gris)
   titre-bouton: '&eMenu SkyHand'
   texte:
-    - '&7Accédez en un clic aux &emenus principaux &7de &eSkyHand&7.'
+    - '&7Accédez en un clic aux &emenus principaux &7du serveur.'
     - '&7&oAstuce : survolez un bouton pour voir sa commande.'
   colonnes: 2
   largeur-bouton: 150
@@ -76,55 +76,16 @@ menu:
   #   actif      : false pour masquer le bouton
   boutons:
     # --- Navigation
-    ile:
+    spawn:
       actif: true
-      libelle: '&bMon île'
+      libelle: '&bSpawn'
       infobulle:
-        - '&8&l« &7Gérez votre &bîle &7: améliorations,'
-        - '&7paramètres, &bbanque &7et &bwarps &8&l»'
+        - '&8&l« &7Retournez au &bspawn &7du serveur &8&l»'
         - ''
-        - '&7&nCommande:&b /is'
+        - '&7&nCommande:&b /spawn'
         - ''
-        - '&7&o(( &b&oCliquez pour ouvrir &7&o))'
-      commande: 'is'
-      permission: ''
-    general:
-      actif: true
-      libelle: '&bMenu général'
-      infobulle:
-        - '&8&l« &7Le &bmenu général &7: boutique,'
-        - '&7métiers, ventes, collectibles,'
-        - '&bwarps &7et &bkits &8&l»'
-        - ''
-        - '&7&nCommande:&b /is more'
-        - ''
-        - '&7&o(( &b&oCliquez pour ouvrir &7&o))'
-      commande: 'is more'
-      permission: ''
-    warps:
-      actif: true
-      libelle: '&bWarps'
-      infobulle:
-        - '&8&l« &bArène&7, &b1v1&7, &benchantement&7,'
-        - "&7top et bien d'autres &bwarps &8&l»"
-        - ''
-        - '&7&nCommande:&b /warp'
-        - ''
-        - '&7&o(( &b&oCliquez pour ouvrir &7&o))'
-      commande: 'warp'
-      permission: ''
-    # Menu DeluxeMenus « Règlement du SkyBlock » : règles générales, chat, cheats/mods, autres et règles du SkyBlock
-    reglement:
-      actif: true
-      libelle: '&bRèglement'
-      infobulle:
-        - '&8&l« &7Consultez les &brègles générales'
-        - '&7du serveur et celles du &bSkyBlock &8&l»'
-        - ''
-        - '&7&nCommande:&b /regles'
-        - ''
-        - '&7&o(( &b&oCliquez pour ouvrir &7&o))'
-      commande: 'regles'
+        - '&7&o(( &b&oCliquez pour y aller &7&o))'
+      commande: 'spawn'
       permission: ''
     # --- Économie
     boutique:
@@ -139,110 +100,28 @@ menu:
         - '&7&o(( &a&oCliquez pour ouvrir &7&o))'
       commande: 'shop'
       permission: ''
-    metiers:
-      actif: true
-      libelle: '&aMétiers'
-      infobulle:
-        - '&8&l« &7Consultez vos &amétiers&7, leur'
-        - '&7niveau et vos &apoints de métier &8&l»'
-        - ''
-        - '&7&nCommande:&a /jobs'
-        - ''
-        - '&7&o(( &a&oCliquez pour ouvrir &7&o))'
-      commande: 'jobs'
-      permission: ''
-    hdv:
-      actif: true
-      libelle: '&aHôtel des ventes'
-      infobulle:
-        - '&8&l« &aVentes directes &7et &aenchères'
-        - '&7entre joueurs &8&l»'
-        - ''
-        - '&7&nCommande:&a /hdv'
-        - ''
-        - '&7&o(( &a&oCliquez pour ouvrir &7&o))'
-      commande: 'hdv'
-      permission: ''
-    # --- Progression
-    quetes:
-      actif: true
-      libelle: '&dQuêtes'
-      infobulle:
-        - '&8&l« &7Suivez vos &dquêtes &7en cours'
-        - '&7et leurs &drécompenses &8&l»'
-        - ''
-        - '&7&nCommande:&d /quest'
-        - ''
-        - '&7&o(( &d&oCliquez pour ouvrir &7&o))'
-      commande: 'quest'
-      permission: ''
-    vote:
-      actif: true
-      libelle: '&dVotes et récompenses'
-      infobulle:
-        - '&8&l« &dRécompenses journalières &7et'
-        - '&dvotes &7pour SkyHand &8&l»'
-        - ''
-        - '&7&nCommande:&d /vote'
-        - ''
-        - '&7&o(( &d&oCliquez pour ouvrir &7&o))'
-      commande: 'vote'
-      permission: ''
-    skyhand:
-      actif: true
-      libelle: '&dFonctionnalités uniques'
-      infobulle:
-        - '&8&l« &7Découvrez tout ce que &dSkyHand'
-        - '&7propose de plus &8&l»'
-        - ''
-        - '&7&nCommande:&d /skyhand'
-        - ''
-        - '&7&o(( &d&oCliquez pour ouvrir &7&o))'
-      commande: 'skyhand'
-      permission: ''
-    # Liens du serveur (Discord, site, vote, boutique) : l'écran Échap n'accepte qu'un seul bouton de dialogue, c'est donc
-    # ce menu qui les propose (SHWelcome ne s'en occupe plus). Gardez un nombre pair de boutons actifs : désactivez-les par deux.
+    # Liens du serveur : l'écran Échap n'accepte qu'un seul bouton de dialogue, c'est donc ce menu qui les propose.
+    # Gardez un nombre pair de boutons actifs : désactivez-les par deux.
     discord:
       actif: true
       libelle: '&9Discord'
       infobulle:
         - '&8&l« &7Rejoignez le serveur &9Discord &8&l»'
         - ''
-        - '&7&nLien:&9 discord.skyhand.fr'
+        - '&7&nLien:&9 example.com/discord'
         - ''
         - '&7&o(( &9&oCliquez pour ouvrir &7&o))'
-      url: 'https://discord.skyhand.fr'
+      url: 'https://example.com/discord'
     site:
       actif: true
       libelle: '&bSite web'
       infobulle:
-        - '&8&l« &7Le &bsite &7de SkyHand &8&l»'
+        - '&8&l« &7Le &bsite &7du serveur &8&l»'
         - ''
-        - '&7&nLien:&b skyhand.fr'
+        - '&7&nLien:&b example.com'
         - ''
         - '&7&o(( &b&oCliquez pour ouvrir &7&o))'
-      url: 'https://skyhand.fr'
-    voter:
-      actif: true
-      libelle: '&dVoter'
-      infobulle:
-        - '&8&l« &7Votez pour &dSkyHand &7et gagnez'
-        - '&7des &drécompenses &8&l»'
-        - ''
-        - '&7&nLien:&d skyhand.fr/vote'
-        - ''
-        - '&7&o(( &d&oCliquez pour ouvrir &7&o))'
-      url: 'https://skyhand.fr/vote'
-    boutique-web:
-      actif: true
-      libelle: '&aBoutique en ligne'
-      infobulle:
-        - '&8&l« &7La &aboutique en ligne &7de SkyHand &8&l»'
-        - ''
-        - '&7&nLien:&a store.skyhand.fr'
-        - ''
-        - '&7&o(( &a&oCliquez pour ouvrir &7&o))'
-      url: 'https://store.skyhand.fr'
+      url: 'https://example.com'
 
 # ---------------------------------------------------------------------------------------------------------------
 # Dialogues à la demande : /shdialogs open <dialogue> [joueur]
@@ -257,8 +136,8 @@ dialogues:
       - '&7&l« &d&lSkyHand &8&l»'
       - '&fVoter pour le serveur'
     texte:
-      - '&7Votez pour &dSkyHand &7sur nos sites partenaires et'
-      - '&7gagnez des &drécompenses &7: clés, temps de fly et d''AFK.'
+      - '&7Votez pour le serveur sur nos sites partenaires et'
+      - '&7gagnez des &drécompenses&7.'
     boutons:
       voter:
         libelle: '&dVoter maintenant'
@@ -266,192 +145,59 @@ dialogues:
           - '&8&l« &7Choisissez un site de vote puis'
           - '&7validez votre &dvote &8&l»'
           - ''
-          - '&7&nLien:&d skyhand.fr/vote'
+          - '&7&nLien:&d example.com/vote'
           - ''
           - '&7&o(( &d&oCliquez pour ouvrir &7&o))'
-        url: 'https://skyhand.fr/vote'
-  discord:
-    titre:
-      - '&7&l« &9&lSkyHand &8&l»'
-      - '&fRejoindre le Discord'
-    texte:
-      - '&7Rejoignez le serveur &9Discord &7de &9SkyHand &7: annonces,'
-      - '&7support par &9ticket &7et notifications de vote.'
-    boutons:
-      rejoindre:
-        libelle: '&9Rejoindre le Discord'
-        infobulle:
-          - '&8&l« &7Rejoignez le serveur &9Discord &8&l»'
-          - ''
-          - '&7&nLien:&9 discord.skyhand.fr'
-          - ''
-          - '&7&o(( &9&oCliquez pour ouvrir &7&o))'
-        url: 'https://discord.skyhand.fr'
-  # Pour les joueurs dont le compte n'est pas encore lié : /liaison donne un lien, un clic suffit
-  discord-liaison:
-    titre:
-      - '&7&l« &9&lSkyHand &8&l»'
-      - '&fLier son compte Discord'
-    texte:
-      - '&7Liez votre compte &9Discord &7en un clic : lancez &e/liaison'
-      - '&7puis cliquez le lien. Vous rejoignez le &9Discord &7automatiquement.'
-    boutons:
-      rejoindre:
-        libelle: '&9Rejoindre le Discord'
-        infobulle:
-          - '&8&l« &7Rejoignez le serveur &9Discord &8&l»'
-          - ''
-          - '&7&nLien:&9 discord.skyhand.fr'
-          - ''
-          - '&7&o(( &9&oCliquez pour ouvrir &7&o))'
-        url: 'https://discord.skyhand.fr'
-      liaison:
-        libelle: '&9Lier mon compte'
-        infobulle:
-          - '&8&l« &7Reliez votre compte &9Minecraft'
-          - '&7à votre compte &9Discord &8&l»'
-          - ''
-          - '&7&nCommande:&9 /liaison'
-          - ''
-          - '&7&o(( &9&oCliquez pour lancer &7&o))'
-        commande: 'liaison'
-  # Kit Nitro Booster (menu des kits)
-  nitro:
-    titre:
-      - '&7&l« &d&lSkyHand &8&l»'
-      - '&fKit Nitro'
-    texte:
-      - '&7Ce kit est réservé aux &dboosters &7du &9Discord &7de &dSkyHand&7.'
-      - '&7Boostez le serveur, puis liez votre compte avec &e/liaison&7.'
-    boutons:
-      rejoindre:
-        libelle: '&9Rejoindre le Discord'
-        infobulle:
-          - '&8&l« &7Rejoignez le serveur &9Discord &8&l»'
-          - ''
-          - '&7&nLien:&9 discord.skyhand.fr'
-          - ''
-          - '&7&o(( &9&oCliquez pour ouvrir &7&o))'
-        url: 'https://discord.skyhand.fr'
-      liaison:
-        libelle: '&9Lier mon compte'
-        infobulle:
-          - '&8&l« &7Reliez votre compte &9Minecraft'
-          - '&7à votre compte &9Discord &8&l»'
-          - ''
-          - '&7&nCommande:&9 /liaison'
-          - ''
-          - '&7&o(( &9&oCliquez pour lancer &7&o))'
-        commande: 'liaison'
-  boutique:
-    titre:
-      - '&7&l« &a&lSkyHand &8&l»'
-      - '&fBoutique en ligne'
-    texte:
-      - '&7Grades, clés, cosmétiques... la &aboutique en ligne &7de'
-      - '&aSkyHand &7soutient le serveur et ses joueurs.'
-    boutons:
-      ouvrir:
-        libelle: '&aOuvrir la boutique'
-        infobulle:
-          - '&8&l« &7La &aboutique en ligne &7de SkyHand &8&l»'
-          - ''
-          - '&7&nLien:&a store.skyhand.fr'
-          - ''
-          - '&7&o(( &a&oCliquez pour ouvrir &7&o))'
-        url: 'https://store.skyhand.fr'
-  grades:
-    titre:
-      - '&7&l« &a&lSkyHand &8&l»'
-      - '&fGrades'
-    texte:
-      - '&7Les &agrades &7s''achètent sur la &aboutique en ligne &7de'
-      - '&aSkyHand&7 : commandes, récompenses et avantages exclusifs.'
-    boutons:
-      voir:
-        libelle: '&aVoir les grades'
-        infobulle:
-          - '&8&l« &7Découvrez les &agrades &7et leurs'
-          - '&aavantages &7sur la boutique &8&l»'
-          - ''
-          - '&7&nLien:&a store.skyhand.fr'
-          - ''
-          - '&7&o(( &a&oCliquez pour ouvrir &7&o))'
-        url: 'https://store.skyhand.fr'
-  reglement:
-    titre:
-      - '&7&l« &b&lSkyHand &8&l»'
-      - '&fRèglement'
-    texte:
-      - '&7Le &brèglement complet &7du serveur est consultable sur'
-      - '&7le site de &bSkyHand&7. Merci de le respecter.'
-    boutons:
-      lire:
-        libelle: '&bLire le règlement'
-        infobulle:
-          - '&8&l« &7Règles générales, chat, cheats/mods'
-          - '&7et règles du &bSkyBlock &8&l»'
-          - ''
-          - '&7&nLien:&b skyhand.fr/reglement'
-          - ''
-          - '&7&o(( &b&oCliquez pour ouvrir &7&o))'
-        url: 'https://skyhand.fr/reglement'
-  # Accueil des nouveaux joueurs : ouvert 3 s après le premier join par le kit Essentials « arrivee » (kits.yml), quand
-  # le joueur arrive sur son île. Les clients plus anciens que la 1.21.6 ne le voient pas : le message de création
-  # d'île de SuperiorSkyblock2 (CREATE_ISLAND) leur donne les mêmes étapes dans le chat.
+        url: 'https://example.com/vote'
+  # Accueil des nouveaux joueurs : à ouvrir à leur arrivée, par exemple depuis un kit d'arrivée avec
+  # « shdialogs open bienvenue <joueur> ». Les clients plus anciens que la 1.21.6 ne le voient pas.
   bienvenue:
     titre:
       - '&7&l« &e&lSkyHand &8&l»'
       - '&fBienvenue sur le serveur !'
     texte:
-      - '&aTon île est prête !'
-      - '&7Tu démarres sur une petite île perdue dans le vide :'
-      - '&7coupe ton &earbre&7, mine ton &egénérateur de pierre &7et'
-      - '&7agrandis ton île. Tes &equêtes &7(&e/quest&7) te guident.'
+      - '&aVotre aventure commence ici !'
+      - '&7Prenez le temps de lire le &erèglement &7du serveur,'
+      - '&7puis lancez-vous : le &espawn &7vous attend.'
       - ''
-      - '&aC''est parti &7: tu commences sur ton île.'
-      - '&bJe joue avec un ami &7: comment rejoindre son île.'
-      - '&eTutoriel détaillé &7: facultatif, les bases du serveur.'
+      - '&aC''est parti &7: vous commencez à jouer.'
+      - '&bRèglement &7: les règles du serveur.'
     # Pas de bouton en bas : « C'est parti », en premier, ferme le dialogue
     bouton-fermer: ''
     boutons:
       parti:
         libelle: '&a&lC''est parti !'
         infobulle:
-          - '&8&l« &7Commencer à jouer sur ton &aîle &8&l»'
+          - '&8&l« &7Commencer à jouer &8&l»'
           - ''
-          - '&7&o(( &a&oClique pour fermer &7&o))'
+          - '&7&o(( &a&oCliquez pour fermer &7&o))'
         fermer: true
-      ami:
-        libelle: '&bJe joue avec un ami'
+      reglement:
+        libelle: '&bRèglement'
         infobulle:
-          - '&8&l« &7Rejoindre l''île d''un ami &8&l»'
+          - '&8&l« &7Les règles du serveur &8&l»'
           - ''
-          - '&7&o(( &b&oClique pour savoir comment &7&o))'
-        commande: 'shdialogs open ami'
-      tutoriel:
-        libelle: '&eTutoriel détaillé'
-        infobulle:
-          - '&8&l« &7Les bases du serveur &8&l»'
-          - ''
-          - '&7&nCommande:&e /warp tutoriel'
-          - ''
-          - '&7&o(( &e&oClique pour y aller &7&o))'
-        commande: 'warp tutoriel'
-  # Suite de « bienvenue » (bouton « Je joue avec un ami ») : comment rejoindre l'île d'un ami.
-  ami:
+          - '&7&o(( &b&oCliquez pour lire &7&o))'
+        commande: 'shdialogs open reglement'
+  # Suite de « bienvenue » (bouton « Règlement ») : un bouton lance une commande, un autre ouvre une adresse.
+  reglement:
     titre:
       - '&7&l« &b&lSkyHand &8&l»'
-      - '&fJouer avec un ami'
+      - '&fRèglement'
     texte:
-      - '&7Ton ami tape &b/is invite &7suivi de ton pseudo.'
-      - '&7Une invitation s''affiche dans ton chat : &bclique'
-      - '&bdessus &7(ou tape &b/rejoindre &7suivi de son pseudo).'
-      - ''
-      - '&7Ton île de départ est remplacée par la sienne :'
-      - '&7tu gardes ton inventaire et tes quêtes.'
+      - '&7Le &brèglement complet &7du serveur est consultable sur'
+      - '&7le site. Merci de le respecter.'
     bouton-fermer: '&a&lCompris'
     boutons:
+      lire:
+        libelle: '&bLire le règlement'
+        infobulle:
+          - '&8&l« &7Règles générales et règles du jeu &8&l»'
+          - ''
+          - '&7&nLien:&b example.com/reglement'
+          - ''
+          - '&7&o(( &b&oCliquez pour ouvrir &7&o))'
+        url: 'https://example.com/reglement'
       retour:
         libelle: '&eRetour'
         commande: 'shdialogs open bienvenue'
