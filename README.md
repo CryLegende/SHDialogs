@@ -22,7 +22,7 @@ Rendu aux couleurs du serveur (même charte que les menus DeluxeMenus) :
 - **Boutons** sur 2 colonnes, sans gras, d'une seule couleur par thème : aqua pour la navigation (Mon île, Menu général, Warps, Règlement), vert pour l'économie (Boutique, Métiers, Hôtel des ventes), rose pour la progression (Quêtes, Votes et récompenses, Fonctionnalités uniques). Les libellés évitent le gris foncé, illisible sur le fond gris des boutons.
 - **Infobulles** structurées comme celles des menus : phrase encadrée `« ... »` aux couleurs du thème, ligne `Commande: /xxx`, puis `(( Cliquez pour ouvrir ))`.
 - **Bouton de fermeture** `⤾ Fermer`, comme le bouton Retour des menus.
-- **Fond noir** : le joueur est aveuglé (effet Cécité) tant qu'un dialogue ouvert par le serveur est affiché, le texte se lit mieux que sur le décor. Le client ne prévient pas le serveur quand il ferme un dialogue : l'effet est retiré dès que le joueur tourne la caméra, se déplace ou ouvre un inventaire. Option `aveugler-pendant-dialogues`. Le menu ouvert depuis l'écran Échap ne passe pas par le serveur et n'est pas concerné.
+- **Fond noir** : le joueur est aveuglé (effet Cécité) tant qu'un dialogue ouvert par le serveur est affiché, le texte se lit mieux que sur le décor. L'effet est retiré au clic sur un bouton du dialogue (les boutons « fermer » et le bouton du bas préviennent le serveur, Échap aussi quand il y a un bouton en bas) ; pour un bouton de lien ou Échap sans bouton en bas, le client ne dit rien : l'effet est retiré dès que le joueur tourne la caméra, se déplace ou ouvre un inventaire. Option `aveugler-pendant-dialogues`. Le menu ouvert depuis l'écran Échap ne passe pas par le serveur et n'est pas concerné.
 
 Détails à connaître :
 

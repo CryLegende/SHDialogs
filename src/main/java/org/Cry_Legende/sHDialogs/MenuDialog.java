@@ -58,14 +58,18 @@ final class MenuDialog {
             }
             if (button.isUrl()) {
                 b.action(DialogAction.staticAction(ClickEvent.openUrl(button.url())));
-            } else if (!button.close()) {
+            } else if (button.close()) {
+                b.action(DialogBlindness.closeAction());
+            } else {
                 b.action(DialogAction.customClick(button.clickKey(), null));
             }
             buttons.add(b.build());
         }
         MultiActionType.Builder type = DialogType.multiAction(buttons).columns(menu.columns());
         if (!menu.closeLabel().isBlank()) {
-            type.exitAction(ActionButton.builder(Texts.legacy(menu.closeLabel())).width(menu.buttonWidth()).build());
+            // action commune de fermeture : Échap la déclenche aussi, le serveur rend la vue tout de suite
+            type.exitAction(ActionButton.builder(Texts.legacy(menu.closeLabel())).width(menu.buttonWidth())
+                    .action(DialogBlindness.closeAction()).build());
         }
         builder.base(base).type(type.build());
     }

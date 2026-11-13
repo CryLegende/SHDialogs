@@ -17,7 +17,8 @@ import java.util.List;
  * Construit le dialogue Paper d'un {@link DialogueConfig}. Même rendu que {@link MenuDialog} : titre en première ligne du
  * texte, textes gris, boutons d'une couleur, infobulles structurées. Un bouton « url » ouvre l'adresse côté client (qui demande
  * confirmation) ; un bouton de commande renvoie au serveur la clé shdialogs:dialogue/&lt;dialogue&gt;/&lt;bouton&gt;, qui retrouve
- * la commande dans config.yml ; un bouton « fermer » n'a pas d'action, le client referme simplement le dialogue.
+ * la commande dans config.yml ; un bouton « fermer » et le bouton du bas portent l'action commune de fermeture
+ * ({@link DialogBlindness#closeAction()}), qui rend la vue au joueur.
  */
 final class DialogueDialog {
 
@@ -49,7 +50,9 @@ final class DialogueDialog {
             }
             if (button.isUrl()) {
                 b.action(DialogAction.staticAction(ClickEvent.openUrl(button.url())));
-            } else if (!button.close()) {
+            } else if (button.close()) {
+                b.action(DialogBlindness.closeAction());
+            } else {
                 b.action(DialogAction.customClick(button.clickKey(dialogue.clickScope()), null));
             }
             buttons.add(b.build());
@@ -57,7 +60,9 @@ final class DialogueDialog {
         MultiActionType.Builder type = DialogType.multiAction(buttons).columns(dialogue.columns());
         // bouton-fermer vide : pas de bouton en bas, Échap ferme toujours le dialogue
         if (!dialogue.closeLabel().isBlank()) {
-            type.exitAction(ActionButton.builder(Texts.legacy(dialogue.closeLabel())).width(dialogue.buttonWidth()).build());
+            // action commune de fermeture : Échap la déclenche aussi, le serveur rend la vue tout de suite
+            type.exitAction(ActionButton.builder(Texts.legacy(dialogue.closeLabel())).width(dialogue.buttonWidth())
+                    .action(DialogBlindness.closeAction()).build());
         }
         DialogType built = type.build();
         return Dialog.create(factory -> factory.empty().base(base).type(built));
