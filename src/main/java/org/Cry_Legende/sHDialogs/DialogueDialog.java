@@ -29,7 +29,7 @@ final class DialogueDialog {
 
     static Dialog create(DialogueConfig dialogue) {
         List<DialogBody> body = new ArrayList<>();
-        body.add(DialogBody.plainMessage(Texts.legacy(dialogue.title()), BODY_WIDTH));
+        body.add(DialogBody.plainMessage(Texts.lines(dialogue.title()), BODY_WIDTH));
         if (!dialogue.text().isEmpty()) {
             body.add(DialogBody.plainMessage(Texts.lines(dialogue.text()), BODY_WIDTH));
         }

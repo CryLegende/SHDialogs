@@ -31,7 +31,8 @@
 # Codes de couleur : &a, &l... et &#rrggbb. Chaque commande est exécutée PAR LE JOUEUR, jamais par la console.
 #
 # Charte de rendu (même esprit que les menus DeluxeMenus du serveur) :
-#   - le titre est la première ligne du texte : la barre de titre reste vide, l'icône d'avertissement du client y est seule ;
+#   - le titre est en tête du texte, sur deux lignes : « SkyHand » à la couleur du dialogue, puis le titre en blanc ; la barre
+#     de titre reste vide, l'icône d'avertissement du client y est seule ;
 #   - le joueur est aveuglé tant que le dialogue est affiché (voir aveugler-pendant-dialogues) : le fond est noir ;
 #   - &8 est lisible pour les cadres « » du titre et du texte ;
 #   - les BOUTONS ont un fond gris moyen : jamais de &8 ni de &0 dans un libellé de bouton, couleurs claires ou blanc ;
@@ -52,7 +53,10 @@ menu:
   ecran-echap: true
   # Entrée dans les actions rapides du client
   actions-rapides: true
-  titre: '&7&l« &e&lSkyHand &8&l» &7Menu'
+  # Titre en tête du texte, une ligne par entrée : « SkyHand » à la couleur du dialogue, puis le titre en blanc
+  titre:
+    - '&7&l« &e&lSkyHand &8&l»'
+    - '&fMenu du serveur'
   # Texte du bouton dans l'écran Échap et dans la liste des actions rapides (court, lisible sur fond gris)
   titre-bouton: '&eMenu SkyHand'
   texte:
@@ -243,13 +247,15 @@ menu:
 # ---------------------------------------------------------------------------------------------------------------
 # Dialogues à la demande : /shdialogs open <dialogue> [joueur]
 # ---------------------------------------------------------------------------------------------------------------
-# Chaque dialogue a un titre (affiché en première ligne du texte), un texte (lignes) et des boutons (mêmes champs que
+# Chaque dialogue a un titre (une ou plusieurs lignes, en tête du texte), un texte (lignes) et des boutons (mêmes champs que
 # menu.boutons : libelle, infobulle, url, commande ou fermer, permission, actif). En option : colonnes (1), largeur-bouton
 # (200), bouton-fermer (bouton tout en bas ; '' = aucun, Échap ferme toujours le dialogue), permission (du dialogue entier)
 # et actif. Une seule adresse par site : changez-la ici, tous les menus qui ouvrent le dialogue la suivent.
 dialogues:
   vote:
-    titre: '&7&l« &d&lVote &8&l» &7Soutenir SkyHand'
+    titre:
+      - '&7&l« &d&lSkyHand &8&l»'
+      - '&fVoter pour le serveur'
     texte:
       - '&7Votez pour &dSkyHand &7sur nos sites partenaires et'
       - '&7gagnez des &drécompenses &7: clés, temps de fly et d''AFK.'
@@ -265,7 +271,9 @@ dialogues:
           - '&7&o(( &d&oCliquez pour ouvrir &7&o))'
         url: 'https://skyhand.fr/vote'
   discord:
-    titre: '&7&l« &9&lDiscord &8&l» &7SkyHand'
+    titre:
+      - '&7&l« &9&lSkyHand &8&l»'
+      - '&fRejoindre le Discord'
     texte:
       - '&7Rejoignez le serveur &9Discord &7de &9SkyHand &7: annonces,'
       - '&7support par &9ticket &7et notifications de vote.'
@@ -281,7 +289,9 @@ dialogues:
         url: 'https://discord.skyhand.fr'
   # Pour les joueurs dont le compte n'est pas encore lié : /liaison donne un lien, un clic suffit
   discord-liaison:
-    titre: '&7&l« &9&lDiscord &8&l» &7Liaison de compte'
+    titre:
+      - '&7&l« &9&lSkyHand &8&l»'
+      - '&fLier son compte Discord'
     texte:
       - '&7Liez votre compte &9Discord &7en un clic : lancez &e/liaison'
       - '&7puis cliquez le lien. Vous rejoignez le &9Discord &7automatiquement.'
@@ -307,7 +317,9 @@ dialogues:
         commande: 'liaison'
   # Kit Nitro Booster (menu des kits)
   nitro:
-    titre: '&7&l« &d&lKit Nitro &8&l» &7Discord'
+    titre:
+      - '&7&l« &d&lSkyHand &8&l»'
+      - '&fKit Nitro'
     texte:
       - '&7Ce kit est réservé aux &dboosters &7du &9Discord &7de &dSkyHand&7.'
       - '&7Boostez le serveur, puis liez votre compte avec &e/liaison&7.'
@@ -332,7 +344,9 @@ dialogues:
           - '&7&o(( &9&oCliquez pour lancer &7&o))'
         commande: 'liaison'
   boutique:
-    titre: '&7&l« &a&lBoutique &8&l» &7SkyHand'
+    titre:
+      - '&7&l« &a&lSkyHand &8&l»'
+      - '&fBoutique en ligne'
     texte:
       - '&7Grades, clés, cosmétiques... la &aboutique en ligne &7de'
       - '&aSkyHand &7soutient le serveur et ses joueurs.'
@@ -347,7 +361,9 @@ dialogues:
           - '&7&o(( &a&oCliquez pour ouvrir &7&o))'
         url: 'https://store.skyhand.fr'
   grades:
-    titre: '&7&l« &a&lGrades &8&l» &7Boutique'
+    titre:
+      - '&7&l« &a&lSkyHand &8&l»'
+      - '&fGrades'
     texte:
       - '&7Les &agrades &7s''achètent sur la &aboutique en ligne &7de'
       - '&aSkyHand&7 : commandes, récompenses et avantages exclusifs.'
@@ -363,7 +379,9 @@ dialogues:
           - '&7&o(( &a&oCliquez pour ouvrir &7&o))'
         url: 'https://store.skyhand.fr'
   reglement:
-    titre: '&7&l« &b&lRèglement &8&l» &7SkyHand'
+    titre:
+      - '&7&l« &b&lSkyHand &8&l»'
+      - '&fRèglement'
     texte:
       - '&7Le &brèglement complet &7du serveur est consultable sur'
       - '&7le site de &bSkyHand&7. Merci de le respecter.'
@@ -382,7 +400,9 @@ dialogues:
   # le joueur arrive sur son île. Les clients plus anciens que la 1.21.6 ne le voient pas : le message de création
   # d'île de SuperiorSkyblock2 (CREATE_ISLAND) leur donne les mêmes étapes dans le chat.
   bienvenue:
-    titre: '&e&lBienvenue sur SkyHand ! &6&l✦'
+    titre:
+      - '&7&l« &e&lSkyHand &8&l»'
+      - '&fBienvenue sur le serveur !'
     texte:
       - '&aTon île est prête !'
       - '&7Tu démarres sur une petite île perdue dans le vide :'
@@ -420,7 +440,9 @@ dialogues:
         commande: 'warp tutoriel'
   # Suite de « bienvenue » (bouton « Je joue avec un ami ») : comment rejoindre l'île d'un ami.
   ami:
-    titre: '&7&l« &b&lSkyHand &8&l» &7Jouer avec un ami'
+    titre:
+      - '&7&l« &b&lSkyHand &8&l»'
+      - '&fJouer avec un ami'
     texte:
       - '&7Ton ami tape &b/is invite &7suivi de ton pseudo.'
       - '&7Une invitation s''affiche dans ton chat : &bclique'

@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * Lu deux fois : au démarrage du serveur (pour construire le dialogue du registre, qui ne change plus ensuite) et à chaque
  * rechargement (pour retrouver la commande de chaque bouton au moment du clic).
  */
-record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, String title, String buttonTitle,
+record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, List<String> title, String buttonTitle,
                   List<String> text, int columns, int buttonWidth, String closeLabel, List<Button> buttons) {
 
     /**
@@ -58,13 +58,13 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, St
             enabled = false;
         }
         return new MenuConfig(enabled, menu.getBoolean("ecran-echap", true), menu.getBoolean("actions-rapides", true),
-                menu.getString("titre", "&7&l« &e&lSkyHand &8&l» &7Menu"), menu.getString("titre-bouton", "&eMenu SkyHand"),
+                Texts.lineList(menu, "titre", List.of("&7&l« &e&lSkyHand &8&l»", "&fMenu du serveur")), menu.getString("titre-bouton", "&eMenu SkyHand"),
                 menu.getStringList("texte"), clamp(menu.getInt("colonnes", 2), 1, 4), clamp(menu.getInt("largeur-bouton", 150), 20, 1024),
                 menu.getString("bouton-fermer", "&c⤾ &fFermer"), List.copyOf(buttons));
     }
 
     private static MenuConfig disabled() {
-        return new MenuConfig(false, false, false, "", "", List.of(), 1, 150, "", List.of());
+        return new MenuConfig(false, false, false, List.of(), "", List.of(), 1, 150, "", List.of());
     }
 
     /**

@@ -18,7 +18,7 @@
 
 Rendu aux couleurs du serveur (même charte que les menus DeluxeMenus) :
 
-- **Titre** `« SkyHand » Menu` en première ligne du texte (la barre de titre reste vide : l'icône d'avertissement du client y est seule), puis deux lignes grises avec les mots clés en jaune, dont une astuce discrète.
+- **Titre** sur deux lignes en tête du texte : `« SkyHand »` à la couleur du dialogue, puis le titre en blanc (`Menu du serveur`, `Bienvenue sur le serveur !`...). La barre de titre reste vide : l'icône d'avertissement du client y est seule. `titre` s'écrit en une ligne ou en liste de lignes, puis deux lignes grises avec les mots clés en jaune, dont une astuce discrète.
 - **Boutons** sur 2 colonnes, sans gras, d'une seule couleur par thème : aqua pour la navigation (Mon île, Menu général, Warps, Règlement), vert pour l'économie (Boutique, Métiers, Hôtel des ventes), rose pour la progression (Quêtes, Votes et récompenses, Fonctionnalités uniques). Les libellés évitent le gris foncé, illisible sur le fond gris des boutons.
 - **Infobulles** structurées comme celles des menus : phrase encadrée `« ... »` aux couleurs du thème, ligne `Commande: /xxx`, puis `(( Cliquez pour ouvrir ))`.
 - **Bouton de fermeture** `⤾ Fermer`, comme le bouton Retour des menus.

@@ -2,7 +2,9 @@ package org.Cry_Legende.sHDialogs;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import org.bukkit.configuration.ConfigurationSection;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +33,22 @@ final class Texts {
 
     static Component legacy(String text) {
         return LEGACY.deserialize(text == null ? "" : text);
+    }
+
+    /**
+     * Valeur d'une clé écrite en une ligne ou en liste de lignes (le titre d'un dialogue, par exemple). Lignes vides retirées.
+     */
+    static List<String> lineList(ConfigurationSection section, String key, List<String> fallback) {
+        List<String> lines = new ArrayList<>();
+        if (section.isList(key)) {
+            lines.addAll(section.getStringList(key));
+        } else if (section.isString(key)) {
+            lines.add(section.getString(key));
+        } else {
+            return fallback;
+        }
+        lines.removeIf(line -> line == null || line.isBlank());
+        return List.copyOf(lines);
     }
 
     /**

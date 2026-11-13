@@ -163,7 +163,7 @@ public final class SHDialogs extends JavaPlugin implements Listener {
                 result.add(new DialogueRow(id, DialogueRow.State.DESACTIVE, "", 0, "", ""));
             } else if (built.containsKey(id) && parsed.containsKey(id)) {
                 DialogueConfig dialogue = parsed.get(id);
-                result.add(new DialogueRow(id, DialogueRow.State.OK, Texts.stripColors(dialogue.title()), dialogue.buttons().size(),
+                result.add(new DialogueRow(id, DialogueRow.State.OK, Texts.stripColors(String.join(" ", dialogue.title())), dialogue.buttons().size(),
                         dialogue.permission(), ""));
             } else {
                 String marker = "« " + id + " »";

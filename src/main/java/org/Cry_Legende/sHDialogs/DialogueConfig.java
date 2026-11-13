@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * Contrairement au menu SkyHand, ces dialogues ne vivent pas dans le registre du serveur : ils sont construits à l'exécution
  * et {@code /shdialogs reload} les recharge, sans redémarrage.
  */
-record DialogueConfig(String id, String title, List<String> text, int columns, int buttonWidth, String closeLabel,
+record DialogueConfig(String id, List<String> title, List<String> text, int columns, int buttonWidth, String closeLabel,
                       String permission, List<MenuConfig.Button> buttons) {
 
     private static final Pattern ID = Pattern.compile("[a-z0-9_-]{1,40}");
@@ -39,8 +39,8 @@ record DialogueConfig(String id, String title, List<String> text, int columns, i
                 warn.accept("Dialogue « " + id + " » ignoré : l'identifiant doit contenir seulement a-z, 0-9, _ et - (40 caractères au plus).");
                 continue;
             }
-            String title = d.getString("titre");
-            if (title == null || title.isBlank()) {
+            List<String> title = Texts.lineList(d, "titre", List.of());
+            if (title.isEmpty()) {
                 warn.accept("Dialogue « " + id + " » ignoré : titre manquant.");
                 continue;
             }

@@ -36,7 +36,9 @@ final class MenuDialog {
 
     static void fill(DialogRegistryEntry.Builder builder, MenuConfig menu) {
         List<DialogBody> body = new ArrayList<>();
-        body.add(DialogBody.plainMessage(Texts.legacy(menu.title()), BODY_WIDTH));
+        if (!menu.title().isEmpty()) {
+            body.add(DialogBody.plainMessage(Texts.lines(menu.title()), BODY_WIDTH));
+        }
         if (!menu.text().isEmpty()) {
             body.add(DialogBody.plainMessage(Texts.lines(menu.text()), BODY_WIDTH));
         }
