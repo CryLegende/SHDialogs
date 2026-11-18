@@ -34,13 +34,15 @@ final class DialogueDialog {
             body.add(DialogBody.plainMessage(Texts.lines(dialogue.text()), BODY_WIDTH));
         }
         // titre vide : l'icône d'avertissement du client reste seule sur sa ligne, le titre est la première ligne du corps
-        DialogBase base = DialogBase.builder(Component.empty())
-                .canCloseWithEscape(true)
-                .pause(false)
-                // le client referme le dialogue dès le clic : l'adresse s'ouvre (ou la commande se lance) par-dessus le jeu
-                .afterAction(DialogBase.DialogAfterAction.CLOSE)
-                .body(body)
-                .build();
+        DialogBase.Builder start = DialogBase.builder(Component.empty()).canCloseWithEscape(true).pause(false);
+        if (dialogue.buttons().stream().anyMatch(MenuConfig.Button::isUrl)) {
+            // bouton de lien : le client referme le dialogue dès le clic, l'adresse s'ouvre par-dessus le jeu
+            start.afterAction(DialogBase.DialogAfterAction.CLOSE);
+        } else {
+            // gardé ouvert au clic : un dialogue ouvert par la commande le remplace sans clignoter, sinon il est fermé
+            DialogBlindness.stayOpen(start);
+        }
+        DialogBase base = start.body(body).build();
 
         List<ActionButton> buttons = new ArrayList<>();
         for (MenuConfig.Button button : dialogue.buttons()) {
