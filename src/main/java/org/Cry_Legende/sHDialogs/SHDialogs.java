@@ -18,13 +18,16 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -43,8 +46,25 @@ public final class SHDialogs extends JavaPlugin implements Listener {
     static final String PERMISSION_OPEN_OTHERS = "shdialogs.open.others";
     private static final String CLICK_NAMESPACE = "shdialogs";
     private static final long MENU_CLICK_INTERVAL_MS = 300;
+    /** attendre-menu : un dialogue qui attend depuis plus longtemps n'est plus montré à la fermeture du menu. */
+    private static final long WAIT_MENU_MS = 120_000;
+
+    /**
+     * Dialogue de la section « dialogues » affiché à un joueur, avec ses valeurs ({1}, {2}... et {joueur}).
+     */
+    private record Opening(String dialogueId, Map<String, String> values) {
+    }
+
+    /**
+     * Dialogue « attendre-menu » en attente de la fermeture du menu ouvert.
+     */
+    private record Waiting(Opening opening, Dialog dialog, long at) {
+    }
 
     private final Map<UUID, Long> lastMenuClick = new ConcurrentHashMap<>();
+    /** Dernier dialogue de la section « dialogues » affiché à chaque joueur : ses valeurs servent au clic. */
+    private final Map<UUID, Opening> openings = new ConcurrentHashMap<>();
+    private final Map<UUID, Waiting> waiting = new ConcurrentHashMap<>();
     private volatile Messages messages;
     private volatile MenuConfig menu;
     private volatile Map<String, DialogueConfig> dialogues = Map.of();
@@ -73,6 +93,8 @@ public final class SHDialogs extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         lastMenuClick.clear();
+        openings.clear();
+        waiting.clear();
         if (blindness != null) {
             blindness.shutdown();
         }
@@ -300,7 +322,58 @@ public final class SHDialogs extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        lastMenuClick.remove(event.getPlayer().getUniqueId());
+        UUID uuid = event.getPlayer().getUniqueId();
+        lastMenuClick.remove(uuid);
+        openings.remove(uuid);
+        waiting.remove(uuid);
+    }
+
+    /**
+     * attendre-menu : le menu se ferme, le dialogue en attente s'affiche. Au tick suivant, pour laisser un autre menu s'ouvrir
+     * à la place (navigation entre menus) : on attend alors sa fermeture à lui.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (waiting.isEmpty() || !(event.getPlayer() instanceof Player player)) {
+            return;
+        }
+        UUID uuid = player.getUniqueId();
+        Waiting pending = waiting.get(uuid);
+        if (pending == null) {
+            return;
+        }
+        if (event.getReason() == InventoryCloseEvent.Reason.DISCONNECT) {
+            waiting.remove(uuid, pending);
+            return;
+        }
+        getServer().getScheduler().runTask(this, () -> {
+            if (waiting.get(uuid) != pending || !player.isOnline()) {
+                return;
+            }
+            if (System.currentTimeMillis() - pending.at() > WAIT_MENU_MS) {
+                waiting.remove(uuid, pending);
+                return;
+            }
+            if (player.getOpenInventory().getType() != InventoryType.CRAFTING) {
+                return;
+            }
+            waiting.remove(uuid, pending);
+            try {
+                show(player, pending.dialog(), pending.opening());
+            } catch (RuntimeException e) {
+                getLogger().warning("Dialogue « " + pending.opening().dialogueId() + " » non affiché à " + player.getName() + " : " + e);
+            }
+        });
+    }
+
+    /**
+     * Bouton « fermer », bouton du bas ou Échap avec bouton du bas : le dialogue affiché ne sert plus.
+     */
+    @EventHandler
+    public void onDialogClosed(PlayerCustomClickEvent event) {
+        if (DialogBlindness.CLOSE_KEY.equals(event.getIdentifier()) && event.getCommonConnection() instanceof PlayerGameConnection connection) {
+            openings.remove(connection.getPlayer().getUniqueId());
+        }
     }
 
     /**
@@ -340,8 +413,11 @@ public final class SHDialogs extends JavaPlugin implements Listener {
      * jamais d'après ce que dit le client, et lancée par le joueur.
      */
     private void onMenuClick(Player player, String buttonId) {
+        if (throttled(player)) {
+            return;
+        }
         MenuConfig current = menu;
-        runButton(player, buttonId, current.enabled() ? current.button(buttonId) : null);
+        runButton(player, buttonId, current.enabled() ? current.button(buttonId) : null, Map.of("joueur", player.getName()));
     }
 
     /**
@@ -349,22 +425,44 @@ public final class SHDialogs extends JavaPlugin implements Listener {
      * permission du dialogue.
      */
     private void onDialogueClick(Player player, String dialogueId, String buttonId) {
+        if (throttled(player)) {
+            return;
+        }
         DialogueConfig dialogue = dialogues.get(dialogueId);
         if (dialogue != null && !dialogue.permission().isEmpty() && !player.hasPermission(dialogue.permission())) {
             messages.send(player, Messages.Type.ERREUR, "dialogue-permission");
             return;
         }
-        runButton(player, buttonId, dialogue == null ? null : dialogue.button(buttonId));
-    }
-
-    private void runButton(Player player, String buttonId, MenuConfig.Button button) {
-        try {
-            if (!player.isOnline()) {
+        Map<String, String> values = Map.of("joueur", player.getName());
+        if (dialogue != null && (dialogue.trusted() || dialogue.valueCount() > 0)) {
+            // valeurs ou commandes de la console : le bouton ne vaut que pour ce dialogue ouvert à ce joueur par le serveur, et
+            // une seule fois (le client peut renvoyer la clé du clic quand il veut)
+            Opening opening = openings.get(player.getUniqueId());
+            if (opening == null || !opening.dialogueId().equals(dialogueId) || !openings.remove(player.getUniqueId(), opening)) {
+                messages.send(player, Messages.Type.ERREUR, "bouton-indisponible");
                 return;
             }
-            long now = System.currentTimeMillis();
-            Long last = lastMenuClick.put(player.getUniqueId(), now);
-            if (last != null && now - last < MENU_CLICK_INTERVAL_MS) {
+            values = opening.values();
+        }
+        runButton(player, buttonId, dialogue == null ? null : dialogue.button(buttonId), values);
+    }
+
+    /**
+     * Deux clics à moins de MENU_CLICK_INTERVAL_MS : le second est ignoré.
+     */
+    private boolean throttled(Player player) {
+        long now = System.currentTimeMillis();
+        Long last = lastMenuClick.put(player.getUniqueId(), now);
+        return last != null && now - last < MENU_CLICK_INTERVAL_MS;
+    }
+
+    /**
+     * Lance les actions du bouton dans l'ordre : commandes du joueur, de la console ([console]) et messages ([message]), avec
+     * les valeurs du dialogue ({1}, {2}... et {joueur}).
+     */
+    private void runButton(Player player, String buttonId, MenuConfig.Button button, Map<String, String> values) {
+        try {
+            if (!player.isOnline()) {
                 return;
             }
             if (button == null || button.isUrl() || button.close()) {
@@ -375,8 +473,23 @@ public final class SHDialogs extends JavaPlugin implements Listener {
                 messages.send(player, Messages.Type.ERREUR, "bouton-permission", "bouton", Texts.stripColors(button.label()));
                 return;
             }
-            if (CommandRunner.asPlayer(player, button.command()) == CommandRunner.Result.UNKNOWN) {
-                messages.send(player, Messages.Type.ERREUR, "commande-echec", "commande", button.command());
+            for (MenuConfig.Action action : button.actions()) {
+                String text = Texts.fillValues(action.text(), values);
+                switch (action.kind()) {
+                    case PLAYER -> {
+                        if (CommandRunner.asPlayer(player, text) == CommandRunner.Result.UNKNOWN) {
+                            messages.send(player, Messages.Type.ERREUR, "commande-echec", "commande", text);
+                        }
+                    }
+                    case CONSOLE -> {
+                        getLogger().info("Bouton « " + buttonId + " » de " + player.getName() + " : [console] " + text);
+                        if (!getServer().dispatchCommand(getServer().getConsoleSender(), text)) {
+                            getLogger().warning("Commande inconnue du bouton « " + buttonId + " » : " + text);
+                            messages.send(player, Messages.Type.ERREUR, "erreur-interne");
+                        }
+                    }
+                    case MESSAGE -> player.sendMessage(Texts.legacy(text));
+                }
             }
         } catch (RuntimeException e) {
             getLogger().warning("Bouton « " + buttonId + " » du menu impossible pour " + player.getName() + " : " + e);
@@ -394,17 +507,19 @@ public final class SHDialogs extends JavaPlugin implements Listener {
         } else if (!supportsDialogs(player, 771)) {
             messages.send(player, Messages.Type.ERREUR, "version-ancienne");
         } else {
-            blindness.show(player, dialog);
+            show(player, dialog, null);
         }
     }
 
     // ------------------------------------------------------------------ dialogues
 
     /**
-     * /shdialogs open &lt;dialogue&gt; [joueur] : ouvre un dialogue de la section « dialogues » à soi-même (permission
-     * shdialogs.open, donnée à tous) ou à un autre joueur (shdialogs.open.others, pour la console et le staff).
+     * /shdialogs open &lt;dialogue&gt; [joueur] [valeurs...] : ouvre un dialogue de la section « dialogues » à soi-même
+     * (permission shdialogs.open, donnée à tous) ou à un autre joueur (shdialogs.open.others, pour la console et le staff).
+     * Les valeurs remplacent {1}, {2}... du dialogue, la dernière prend le reste de la ligne. Elles passent dans les commandes
+     * des boutons : comme un dialogue qui a un bouton [console], elles sont réservées à la console et au staff.
      */
-    private void openCommand(CommandSender sender, String id, String targetName) {
+    private void openCommand(CommandSender sender, String id, String targetName, String[] rawValues) {
         if (targetName != null && sender instanceof Player self && self.getName().equalsIgnoreCase(targetName)) {
             targetName = null;
         }
@@ -435,6 +550,24 @@ public final class SHDialogs extends JavaPlugin implements Listener {
             messages.send(sender, Messages.Type.ERREUR, "dialogue-inconnu", "dialogue", id);
             return;
         }
+        int expected = dialogue.valueCount();
+        if ((rawValues.length > 0 || expected > 0 || dialogue.trusted()) && !sender.hasPermission(PERMISSION_OPEN_OTHERS)) {
+            messages.send(sender, Messages.Type.ERREUR, "permission");
+            return;
+        }
+        if (rawValues.length < expected) {
+            messages.send(sender, Messages.Type.ERREUR, "valeurs-manquantes", "dialogue", dialogue.id(), "attendues", String.valueOf(expected));
+            return;
+        }
+        if (expected == 0 && rawValues.length > 0) {
+            messages.send(sender, Messages.Type.ERREUR, "valeurs-inattendues", "dialogue", dialogue.id());
+            return;
+        }
+        Map<String, String> values = new HashMap<>();
+        values.put("joueur", target.getName());
+        for (int i = 0; i < expected; i++) {
+            values.put(String.valueOf(i + 1), i == expected - 1 ? String.join(" ", Arrays.copyOfRange(rawValues, i, rawValues.length)) : rawValues[i]);
+        }
         if (!dialogue.permission().isEmpty() && !target.hasPermission(dialogue.permission())) {
             messages.send(sender, Messages.Type.ERREUR, "dialogue-permission");
             return;
@@ -450,35 +583,64 @@ public final class SHDialogs extends JavaPlugin implements Listener {
             return;
         }
         Dialog dialog = dialogs.get(dialogue.id());
+        if (dialog != null && dialogue.showsValues()) {
+            // valeurs dans les textes : construit pour cette ouverture
+            try {
+                dialog = DialogueDialog.create(dialogue.filled(values));
+            } catch (RuntimeException e) {
+                getLogger().warning("Dialogue « " + dialogue.id() + " » non construit avec ses valeurs : " + e);
+                dialog = null;
+            }
+        }
         if (dialog == null) {
             messages.send(sender, Messages.Type.ERREUR, "erreur-interne");
             return;
         }
-        open(sender, target, dialog);
+        open(sender, target, dialog, new Opening(dialogue.id(), Map.copyOf(values)), dialogue.waitMenu());
         if (target != sender && sender instanceof Player) {
             messages.send(sender, Messages.Type.SUCCES, "ouvert", "dialogue", dialogue.id(), "joueur", target.getName());
         }
     }
 
-    private void open(CommandSender sender, Player target, Dialog dialog) {
+    private void open(CommandSender sender, Player target, Dialog dialog, Opening opening, boolean waitMenu) {
         // au tick suivant : la commande est souvent lancée depuis l'événement de clic d'un menu DeluxeMenus, qu'on ne ferme pas ici
         getServer().getScheduler().runTask(this, () -> {
             if (!target.isOnline()) {
                 return;
             }
             try {
-                // Les menus n'ont plus de [close] (il laissait un instant sans écran entre le menu et le dialogue) : le menu encore
-                // ouvert est fermé ici, juste avant le dialogue. Les deux paquets partent dans le même tick, le client les traite
-                // dans la même image : pas de clignotement, et plus de menu fantôme ouvert côté serveur.
                 if (target.getOpenInventory().getType() != InventoryType.CRAFTING) {
+                    if (waitMenu) {
+                        // attendre-menu : le joueur regarde encore un menu (le lot d'une box...), le dialogue s'affichera à sa fermeture
+                        waiting.put(target.getUniqueId(), new Waiting(opening, dialog, System.currentTimeMillis()));
+                        return;
+                    }
+                    // Les menus n'ont plus de [close] (il laissait un instant sans écran entre le menu et le dialogue) : le menu
+                    // encore ouvert est fermé ici, juste avant le dialogue. Les deux paquets partent dans le même tick, le client
+                    // les traite dans la même image : pas de clignotement, et plus de menu fantôme ouvert côté serveur.
                     target.closeInventory();
                 }
-                blindness.show(target, dialog);
+                show(target, dialog, opening);
             } catch (RuntimeException e) {
                 getLogger().warning("Dialogue non affiché à " + target.getName() + " : " + e);
                 messages.send(sender, Messages.Type.ERREUR, "erreur-interne");
             }
         });
+    }
+
+    /**
+     * Affiche un dialogue et retient ses valeurs pour le clic (null : un dialogue sans valeurs, le menu par exemple). Un
+     * dialogue en attente de la fermeture d'un menu est oublié : celui-ci le remplace.
+     */
+    private void show(Player player, Dialog dialog, Opening opening) {
+        UUID uuid = player.getUniqueId();
+        waiting.remove(uuid);
+        if (opening == null) {
+            openings.remove(uuid);
+        } else {
+            openings.put(uuid, opening);
+        }
+        blindness.show(player, dialog);
     }
 
     // ------------------------------------------------------------------ commandes
@@ -491,7 +653,7 @@ public final class SHDialogs extends JavaPlugin implements Listener {
     }
 
     /**
-     * /shdialogs reload | list | menu | open &lt;dialogue&gt; [joueur]
+     * /shdialogs reload | list | menu | open &lt;dialogue&gt; [joueur] [valeurs...]
      */
     private final class AdminCommand implements BasicCommand {
 
@@ -538,8 +700,9 @@ public final class SHDialogs extends JavaPlugin implements Listener {
                     } else {
                         messages.send(sender, Messages.Type.ERREUR, "joueur-seulement");
                     }
-                } else if (sub.equals("open") && (args.length == 2 || args.length == 3)) {
-                    openCommand(sender, args[1], args.length == 3 ? args[2] : null);
+                } else if (sub.equals("open") && args.length >= 2) {
+                    openCommand(sender, args[1], args.length >= 3 ? args[2] : null,
+                            args.length > 3 ? Arrays.copyOfRange(args, 3, args.length) : new String[0]);
                 } else if (sub.equals("open")) {
                     messages.send(sender, Messages.Type.ERREUR, "open-usage");
                 } else {

@@ -5,7 +5,7 @@
 # ATTENTION : l'aspect du menu (titres, textes, libellés, infobulles, colonnes, liste des boutons) est figé au
 # démarrage du serveur. /shdialogs reload ne recharge que les commandes, les permissions et les messages.
 #
-# Dialogues à la demande (section « dialogues », plus bas) : /shdialogs open <dialogue> [joueur] en ouvre un depuis un
+# Dialogues à la demande (section « dialogues », plus bas) : /shdialogs open <dialogue> [joueur] [valeurs...] en ouvre un depuis un
 # menu DeluxeMenus (« [player] shdialogs open vote », à la suite du texte classique du menu), une commande, un NPC...
 # Ils sont construits à l'exécution : /shdialogs reload les recharge, sans redémarrage. Les clients plus anciens que la
 # 1.21.6 ne les voient pas : ils reçoivent seulement un avertissement.
@@ -16,6 +16,8 @@
 #   /shdialogs list                           Liste le menu et les dialogues : chargés, désactivés ou en erreur (avec la cause).
 #   /shdialogs menu                           Ouvre le menu SkyHand à soi-même (test, joueur seulement).
 #   /shdialogs open <dialogue> [joueur]       Ouvre un dialogue à soi-même, ou à un autre joueur.
+#   /shdialogs open <dialogue> <joueur> <valeurs...>
+#                                             Avec les valeurs {1}, {2}... du dialogue (console et staff, voir plus bas).
 #
 # Permissions :
 #   shdialogs.admin          Toutes les sous-commandes d'administration (par défaut : op).
@@ -23,12 +25,14 @@
 #   shdialogs.admin.list     /shdialogs list (par défaut : op).
 #   shdialogs.menu           /shdialogs menu (par défaut : op).
 #   shdialogs.open           /shdialogs open pour soi-même (par défaut : tous les joueurs).
-#   shdialogs.open.others    /shdialogs open pour un autre joueur (par défaut : op).
+#   shdialogs.open.others    /shdialogs open pour un autre joueur, avec des valeurs, ou d'un dialogue qui a un bouton
+#                            [console] (par défaut : op).
 #   Le champ permission d'un bouton ou d'un dialogue accepte n'importe quel nœud ; vide, il est ouvert à tous.
 #
 # Les messages du chat (préfixe, couleurs, textes) sont dans messages.yml.
 #
-# Codes de couleur : &a, &l... et &#rrggbb. Chaque commande est exécutée PAR LE JOUEUR, jamais par la console.
+# Codes de couleur : &a, &l... et &#rrggbb. Une commande est exécutée PAR LE JOUEUR ; seuls les dialogues de la section
+# « dialogues » peuvent en lancer par la console ([console], voir plus bas).
 #
 # Charte de rendu (même esprit que les menus DeluxeMenus du serveur) :
 #   - le titre est en tête du texte, sur deux lignes : « SkyHand » à la couleur du dialogue, puis le titre en blanc ; la barre
@@ -65,11 +69,12 @@ menu:
   colonnes: 2
   largeur-bouton: 150
   bouton-fermer: '&c⤾ &fFermer'
-  # Chaque bouton lance UNE commande joueur (sans le /). Les boutons sont affichés dans cet ordre, sur 2 colonnes
+  # Chaque bouton lance une commande joueur (sans le /). Les boutons sont affichés dans cet ordre, sur 2 colonnes
   # (gardez un nombre PAIR de boutons actifs). Une couleur par thème : &b navigation, &a économie, &d progression.
   #   libelle    : texte du bouton, d'UNE couleur et sans gras
   #   infobulle  : lignes affichées au survol (facultatif) : phrase encadrée, commande, invitation au clic
-  #   commande   : commande lancée par le joueur, comme s'il la tapait dans le chat
+  #   commande   : commande lancée par le joueur, comme s'il la tapait dans le chat (ou une liste, avec des lignes
+  #                [message] ; pas de [console] dans le menu : il s'ouvre depuis l'écran Échap, sans passer par le serveur)
   #   url        : à la place de commande, ouvre une adresse http(s) (le client demande confirmation)
   #   fermer     : true à la place de commande et url, le bouton ferme simplement le dialogue
   #   permission : permission nécessaire (facultatif, vide = tout le monde)
@@ -124,13 +129,83 @@ menu:
       url: 'https://example.com'
 
 # ---------------------------------------------------------------------------------------------------------------
-# Dialogues à la demande : /shdialogs open <dialogue> [joueur]
+# Dialogues à la demande : /shdialogs open <dialogue> [joueur] [valeurs...]
 # ---------------------------------------------------------------------------------------------------------------
 # Chaque dialogue a un titre (une ou plusieurs lignes, en tête du texte), un texte (lignes) et des boutons (mêmes champs que
 # menu.boutons : libelle, infobulle, url, commande ou fermer, permission, actif). En option : colonnes (1), largeur-bouton
 # (200), bouton-fermer (bouton tout en bas ; '' = aucun, Échap ferme toujours le dialogue), permission (du dialogue entier)
 # et actif. Une seule adresse par site : changez-la ici, tous les menus qui ouvrent le dialogue la suivent.
+#
+# commande d'un bouton : une ligne, ou une liste de lignes lancées dans l'ordre. Chaque ligne :
+#   sans préfixe, ou « [player] ... »   commande lancée par le joueur, comme s'il la tapait dans le chat ;
+#   « [console] ... »                   commande lancée par la console. Un dialogue qui en a ne s'ouvre que par la console ou le
+#                                       staff (shdialogs.open.others), et chaque ouverture ne sert qu'à un clic ;
+#   « [message] ... »                   message envoyé dans le chat du joueur.
+# Valeurs : « /shdialogs open <dialogue> <joueur> <valeur 1> <valeur 2>... » remplace {1}, {2}... dans le titre, le texte,
+# les libellés, les infobulles et les commandes ; la dernière valeur prend le reste de la ligne (espaces et couleurs
+# compris). {joueur} est le pseudo du joueur. Des valeurs ne se donnent que par la console ou le staff (shdialogs.open.others) :
+# un dialogue qui attend {1} ne s'ouvre pas sans elles.
+# attendre-menu: true : si le joueur a un menu ouvert (le lot d'une box...), le dialogue s'affiche quand il le ferme (dans
+# les 2 minutes) au lieu de fermer le menu.
 dialogues:
+  # Cosmétiques gagnés dans une box : la récompense du lot ouvre le dialogue, par exemple
+  #   shdialogs open nouveau-compagnon %player_name% Teckel &fCompagnon &6Teckel
+  # {1} : ce que la commande du bouton équipe, {2} : le nom affiché (le DisplayName du lot). Le dialogue attend que le
+  # menu de la box soit fermé ; « Équiper maintenant » en premier, « Plus tard » ferme.
+  nouveau-compagnon:
+    titre:
+      - '&7&l« &d&lSkyHand &8&l»'
+      - '&fNouveau compagnon !'
+    texte:
+      - '{2} &7est à vous !'
+      - '&7Équipez-le maintenant, ou plus tard avec &d/pets&7.'
+    attendre-menu: true
+    bouton-fermer: ''
+    boutons:
+      equiper:
+        libelle: '&a&lÉquiper maintenant'
+        commande:
+          - '[console] shcompagnons set {joueur} {1}'
+          - '[message] &8&l« &a&lSH &8&l» &7Vous avez équipé : {2}&7.'
+      plus-tard:
+        libelle: '&fPlus tard'
+        fermer: true
+  nouvelle-particule:
+    titre:
+      - '&7&l« &d&lSkyHand &8&l»'
+      - '&fNouvelle particule !'
+    texte:
+      - '{2} &7est à vous !'
+      - '&7Équipez-la maintenant, ou plus tard avec &d/particules&7.'
+    attendre-menu: true
+    bouton-fermer: ''
+    boutons:
+      equiper:
+        libelle: '&a&lÉquiper maintenant'
+        commande:
+          - '[console] ppo {joueur} group load {1}'
+          - '[message] &8&l« &a&lSH &8&l» &7Vous avez équipé : {2}&7.'
+      plus-tard:
+        libelle: '&fPlus tard'
+        fermer: true
+  nouveau-titre:
+    titre:
+      - '&7&l« &d&lSkyHand &8&l»'
+      - '&fNouveau titre !'
+    texte:
+      - '{2} &7est à vous !'
+      - '&7Équipez-le maintenant, ou plus tard avec &d/titres&7.'
+    attendre-menu: true
+    bouton-fermer: ''
+    boutons:
+      equiper:
+        libelle: '&a&lÉquiper maintenant'
+        commande:
+          - '[console] shtitres set {joueur} {1}'
+          - '[message] &8&l« &a&lSH &8&l» &7Vous avez équipé : {2}&7.'
+      plus-tard:
+        libelle: '&fPlus tard'
+        fermer: true
   vote:
     titre:
       - '&7&l« &d&lSkyHand &8&l»'

@@ -26,7 +26,7 @@ Rendu aux couleurs du serveur (même charte que les menus DeluxeMenus) :
 
 Détails à connaître :
 
-- **Commandes lancées par le joueur, jamais par la console.** Le plugin déclenche `PlayerCommandPreprocessEvent` avant d'exécuter la commande : c'est ainsi que DeluxeMenus ouvre ses menus pour `/is`, `/warp`, `/kits`... et que les plugins de restriction de commandes gardent la main.
+- **Commandes lancées par le joueur.** Seuls les dialogues de la section `dialogues` peuvent en lancer par la console (`[console]`, voir plus bas). Le plugin déclenche `PlayerCommandPreprocessEvent` avant d'exécuter la commande : c'est ainsi que DeluxeMenus ouvre ses menus pour `/is`, `/warp`, `/kits`... et que les plugins de restriction de commandes gardent la main.
 - **L'aspect du menu est figé au démarrage** (le registre des dialogues ne se modifie plus ensuite). `/shdialogs reload` relit les commandes des boutons, les permissions et les messages ; si l'aspect du menu a changé, il prévient qu'un redémarrage est nécessaire.
 - **Le client n'est jamais cru sur parole** : au clic, la commande est retrouvée dans `config.yml` d'après l'identifiant du bouton, jamais d'après ce que dit le client.
 - **Nombre pair de boutons** : le menu est sur 2 colonnes, gardez un nombre pair de boutons actifs (les liens web, Discord, site, vote et boutique, se désactivent par deux).
@@ -39,7 +39,11 @@ La section `dialogues` de `config.yml` décrit autant de dialogues que voulu (ti
 - **Rechargés sans redémarrage** : contrairement au menu SkyHand, ils sont construits à l'exécution, `/shdialogs reload` suffit pour ajouter ou modifier un dialogue.
 - **Une adresse par site** : changez-la dans le dialogue, tous les menus qui l'ouvrent la suivent.
 - **Clients plus anciens que la 1.21.6** : pas de repli, seulement un avertissement envoyé à celui qui a lancé la commande (le joueur lui-même, ou le staff / la console s'ils l'ont ouvert à quelqu'un d'autre). Le texte classique du menu DeluxeMenus leur suffit.
-- **Boutons de commande** : lancés par le joueur comme ceux du menu, la commande est retrouvée dans `config.yml` d'après les identifiants du dialogue et du bouton.
+- **Boutons de commande** : lancés par le joueur comme ceux du menu, la commande est retrouvée dans `config.yml` d'après les identifiants du dialogue et du bouton. `commande` s'écrit en une ligne ou en liste de lignes lancées dans l'ordre, chacune sans préfixe ou `[player] ...` (le joueur), `[console] ...` (la console) ou `[message] ...` (un message dans le chat du joueur).
+- **Valeurs** : `/shdialogs open <dialogue> <joueur> <valeur 1> <valeur 2>...` remplace `{1}`, `{2}`... dans le titre, le texte, les libellés, les infobulles et les commandes ; la dernière valeur prend le reste de la ligne (espaces et couleurs compris), `{joueur}` est le pseudo. Un dialogue qui attend `{1}` ne s'ouvre pas sans ses valeurs (la console dit combien il en faut).
+- **Sécurité des valeurs et de `[console]`** : des valeurs ne se donnent que par la console ou le staff (`shdialogs.open.others`), et un dialogue qui a un bouton `[console]` ne s'ouvre que par eux, même pour soi-même. Au clic, le serveur ne lance un tel bouton que si c'est ce dialogue qu'il a ouvert à ce joueur, et une seule fois par ouverture (un clic renvoyé par le client, ou après « fermer », est refusé). Le menu SkyHand refuse `[console]` : il s'ouvre depuis l'écran Échap sans passer par le serveur.
+- **`attendre-menu: true`** : si le joueur a un menu ouvert (le lot d'une box qu'il regarde encore...), le dialogue s'affiche quand il le ferme (dans les 2 minutes) au lieu de fermer le menu.
+- **Exemple, les cosmétiques gagnés dans une box** : la récompense du lot lance `shdialogs open nouveau-compagnon %player_name% Teckel &fCompagnon &6Teckel` ; le dialogue `nouveau-compagnon` dit « Compagnon Teckel est à vous ! », attend que le menu de la box soit fermé, et son bouton « Équiper maintenant » lance `[console] shcompagnons set {joueur} {1}` puis `[message] ... Vous avez équipé : {2}`. Ajouter un cosmétique à une box = une ligne dans ses commandes ; ce que fait le bouton reste dans `config.yml`.
 - **Boutons « fermer »** (`fermer: true`) : ferment simplement le dialogue. Avec `bouton-fermer: ''`, le dialogue n'a plus de bouton en bas : c'est ainsi que `bienvenue` place « C'est parti ! » en premier, au-dessus de « Je joue avec un ami » et « Tutoriel détaillé ».
 - **Pas de `[close]` dans les menus** : un `[close]` laisse un instant sans écran entre le menu et le dialogue (clignotement). Le menu reste affiché, et SHDialogs le ferme au tick suivant, juste avant d'ouvrir le dialogue (même tick, même image côté client).
 
@@ -56,7 +60,7 @@ Utilisé sur : **Opale** (Purpur/DivineMC 1.21.11, Java 25).
 | `/shdialogs reload` | — | Relit `config.yml` et `messages.yml`. Si l'un des deux est invalide, rien n'est remplacé et le fichier fautif est indiqué. | `shdialogs.admin.reload` |
 | `/shdialogs list` | — | Liste le menu et les dialogues : chargés, désactivés ou en erreur (avec la cause). | `shdialogs.admin.list` |
 | `/shdialogs menu` | — | Ouvre le menu SkyHand à la demande (outil de test du staff, joueur seulement). | `shdialogs.menu` |
-| `/shdialogs open <dialogue> [joueur]` | — | Ouvre un dialogue de la section `dialogues` (à soi-même, ou à un joueur pour la console et le staff). | `shdialogs.open` (tous), `shdialogs.open.others` (op) |
+| `/shdialogs open <dialogue> [joueur] [valeurs...]` | — | Ouvre un dialogue de la section `dialogues` (à soi-même, ou à un joueur pour la console et le staff), avec ses valeurs `{1}`, `{2}`... | `shdialogs.open` (tous), `shdialogs.open.others` (op : autre joueur, valeurs, dialogue avec `[console]`) |
 
 La console peut utiliser `reload`, `list` et `open` avec un joueur.
 
@@ -69,7 +73,7 @@ La console peut utiliser `reload`, `list` et `open` avec un joueur.
 | `shdialogs.admin.list` | `/shdialogs list`. | `op` |
 | `shdialogs.menu` | Ouvrir le menu SkyHand par commande. | `op` |
 | `shdialogs.open` | Ouvrir un dialogue pour soi-même (menus DeluxeMenus). | tous |
-| `shdialogs.open.others` | Ouvrir un dialogue à un autre joueur. | `op` |
+| `shdialogs.open.others` | Ouvrir un dialogue à un autre joueur, avec des valeurs, ou un dialogue qui a un bouton `[console]`. | `op` |
 
 Le champ `permission` d'un bouton ou d'un dialogue du `config.yml` accepte n'importe quel nœud ; vide, il est ouvert à tous.
 
@@ -84,13 +88,15 @@ plugins/SHDialogs/
 │   ├── menu                     menu SkyHand (figé au démarrage, sauf les commandes)
 │   │   ├── actif, ecran-echap, actions-rapides
 │   │   ├── titre, titre-bouton, texte, colonnes, largeur-bouton, bouton-fermer
-│   │   └── boutons              un bloc par bouton : libelle, infobulle, commande (ou url, ou fermer), permission, actif
+│   │   └── boutons              un bloc par bouton : libelle, infobulle, commande (ligne ou liste ; ou url, ou fermer), permission, actif
 │   │       ├── ile, general, warps, reglement        navigation
 │   │       ├── boutique, metiers, hdv                économie
 │   │       ├── quetes, vote, skyhand                 progression
 │   │       └── discord, site, voter, boutique-web    liens web (bouton « url »)
 │   └── dialogues                dialogues à la demande (rechargés par /shdialogs reload)
-│       └── vote, discord, discord-liaison, nitro, boutique, grades, reglement, bienvenue, ami
+│       ├── titre, texte, boutons, colonnes, largeur-bouton, bouton-fermer, permission, attendre-menu, actif
+│       ├── nouveau-compagnon, nouvelle-particule, nouveau-titre    cosmétiques gagnés dans une box (valeurs {1} {2}, [console])
+│       └── vote, bienvenue, reglement                              exemples
 └── <a href="src/main/resources/messages.yml">messages.yml</a>
     ├── prefixe, couleurs        préfixe des messages et couleur par type (erreur, succès, info)
     └── erreur, succes, info, avertissement    messages du chat, par type

@@ -83,6 +83,60 @@ final class Texts {
     }
 
     /**
+     * Valeurs d'un dialogue ouvert par /shdialogs open &lt;dialogue&gt; &lt;joueur&gt; &lt;valeurs...&gt; : {1}, {2}... et {joueur}.
+     */
+    private static final Pattern VALUE = Pattern.compile("\\{([1-9][0-9]?|joueur)}");
+
+    /**
+     * Remplace {1}, {2}... et {joueur} en un seul passage (une valeur n'est pas réinterprétée). Une variable sans valeur
+     * reste telle quelle.
+     */
+    static String fillValues(String template, Map<String, String> values) {
+        if (template == null || values.isEmpty() || template.indexOf('{') < 0) {
+            return template;
+        }
+        Matcher matcher = VALUE.matcher(template);
+        StringBuilder out = new StringBuilder();
+        while (matcher.find()) {
+            String value = values.get(matcher.group(1));
+            matcher.appendReplacement(out, Matcher.quoteReplacement(value != null ? value : matcher.group()));
+        }
+        matcher.appendTail(out);
+        return out.toString();
+    }
+
+    /**
+     * Plus grand numéro de valeur ({1}, {2}...) utilisé dans ces textes, 0 s'il n'y en a pas.
+     */
+    static int maxValueIndex(Iterable<String> texts) {
+        int max = 0;
+        for (String text : texts) {
+            if (text == null) {
+                continue;
+            }
+            Matcher matcher = VALUE.matcher(text);
+            while (matcher.find()) {
+                if (!matcher.group(1).equals("joueur")) {
+                    max = Math.max(max, Integer.parseInt(matcher.group(1)));
+                }
+            }
+        }
+        return max;
+    }
+
+    /**
+     * Vrai si l'un de ces textes contient {1}, {2}... ou {joueur}.
+     */
+    static boolean hasValues(Iterable<String> texts) {
+        for (String text : texts) {
+            if (text != null && VALUE.matcher(text).find()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Variables données par paires nom, valeur.
      */
     static Map<String, String> vars(String... pairs) {

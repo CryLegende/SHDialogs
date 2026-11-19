@@ -20,12 +20,29 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
                   List<String> text, int columns, int buttonWidth, String closeLabel, List<Button> buttons) {
 
     /**
-     * Un bouton du menu : une commande joueur, une adresse web, ou rien (bouton « fermer » : le client referme le dialogue).
+     * Une ligne de « commande » d'un bouton : commande lancée par le joueur (sans préfixe, ou [player]), par la console
+     * ([console], dialogues de la section « dialogues » seulement), ou message envoyé au joueur ([message]).
      */
-    record Button(String id, String label, List<String> tooltip, String command, String url, String permission, boolean close) {
+    record Action(Kind kind, String text) {
+        enum Kind {
+            PLAYER, CONSOLE, MESSAGE
+        }
+    }
+
+    /**
+     * Un bouton : des actions (commandes, messages), une adresse web, ou rien (bouton « fermer » : le client referme le dialogue).
+     */
+    record Button(String id, String label, List<String> tooltip, List<Action> actions, String url, String permission, boolean close) {
 
         boolean isUrl() {
             return url != null;
+        }
+
+        /**
+         * Au moins une commande lancée par la console.
+         */
+        boolean hasConsole() {
+            return actions.stream().anyMatch(action -> action.kind() == Action.Kind.CONSOLE);
         }
 
         /**
@@ -45,6 +62,7 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
 
     private static final Pattern ID = Pattern.compile("[a-z0-9_-]{1,40}");
     static final int MAX_COMMAND_LENGTH = 200;
+    static final int MAX_MESSAGE_LENGTH = 512;
 
     static MenuConfig read(ConfigurationSection root, Consumer<String> warn) {
         ConfigurationSection menu = root.getConfigurationSection("menu");
@@ -52,6 +70,14 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
             return disabled();
         }
         List<Button> buttons = readButtons(menu.getConfigurationSection("boutons"), warn);
+        // le menu s'ouvre depuis l'écran Échap sans passer par le serveur : un bouton [console] y servirait à tous, à tout moment
+        buttons.removeIf(button -> {
+            if (button.hasConsole()) {
+                warn.accept("Bouton « " + button.id() + " » du menu ignoré : [console] est réservé aux dialogues de la section dialogues.");
+                return true;
+            }
+            return false;
+        });
         boolean enabled = menu.getBoolean("actif", true);
         if (enabled && buttons.isEmpty()) {
             warn.accept("Menu SkyHand ignoré : aucun bouton valide dans menu.boutons.");
@@ -101,7 +127,7 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
         List<String> tooltip = b.getStringList("infobulle");
         String permission = b.getString("permission", "");
         if (b.getBoolean("fermer", false)) {
-            return new Button(id, label, tooltip, null, null, "", true);
+            return new Button(id, label, tooltip, List.of(), null, "", true);
         }
         String url = b.getString("url", "");
         if (!url.isBlank()) {
@@ -110,14 +136,59 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
                 warn.accept("Bouton « " + id + " » ignoré : url invalide (http ou https attendu) : " + url);
                 return null;
             }
-            return new Button(id, label, tooltip, null, checked, permission == null ? "" : permission, false);
+            return new Button(id, label, tooltip, List.of(), checked, permission == null ? "" : permission, false);
         }
-        String command = cleanCommand(b.getString("commande"));
-        if (command == null) {
-            warn.accept("Bouton « " + id + " » ignoré : commande manquante ou invalide.");
+        List<String> lines = Texts.lineList(b, "commande", List.of());
+        if (lines.isEmpty()) {
+            warn.accept("Bouton « " + id + " » ignoré : commande manquante.");
             return null;
         }
-        return new Button(id, label, tooltip, command, null, permission == null ? "" : permission, false);
+        List<Action> actions = new ArrayList<>();
+        for (String line : lines) {
+            Action action = readAction(line);
+            if (action == null) {
+                warn.accept("Bouton « " + id + " » ignoré : commande invalide : " + line);
+                return null;
+            }
+            actions.add(action);
+        }
+        return new Button(id, label, tooltip, List.copyOf(actions), null, permission == null ? "" : permission, false);
+    }
+
+    /**
+     * Une ligne de « commande » : « [console] ... », « [player] ... », « [message] ... » ou une commande sans préfixe
+     * (lancée par le joueur). Null si elle est vide, trop longue, sur plusieurs lignes ou si le préfixe est inconnu.
+     */
+    static Action readAction(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String line = raw.trim();
+        Action.Kind kind = Action.Kind.PLAYER;
+        if (line.startsWith("[")) {
+            int end = line.indexOf(']');
+            if (end < 0) {
+                return null;
+            }
+            String prefix = line.substring(1, end).trim().toLowerCase(Locale.ROOT);
+            kind = switch (prefix) {
+                case "console" -> Action.Kind.CONSOLE;
+                case "player" -> Action.Kind.PLAYER;
+                case "message" -> Action.Kind.MESSAGE;
+                default -> null;
+            };
+            if (kind == null) {
+                return null;
+            }
+            line = line.substring(end + 1);
+        }
+        if (kind == Action.Kind.MESSAGE) {
+            String text = line.trim();
+            return text.isEmpty() || text.length() > MAX_MESSAGE_LENGTH || text.indexOf('\n') >= 0 || text.indexOf('\r') >= 0
+                    ? null : new Action(kind, text);
+        }
+        String command = cleanCommand(line);
+        return command == null ? null : new Action(kind, command);
     }
 
     /**

@@ -20,7 +20,10 @@ erreur:
   permission: 'Vous n''avez pas la permission.'
   # {sous-commandes} : les sous-commandes que l'expéditeur a le droit d'utiliser
   usage-liste: 'Utilisation : &e/shdialogs <{sous-commandes}>&7.'
-  open-usage: 'Utilisation : &e/shdialogs open <dialogue> [joueur]&7.'
+  open-usage: 'Utilisation : &e/shdialogs open <dialogue> [joueur] [valeurs...]&7.'
+  # {dialogue} et {attendues} : nombre de valeurs ({1}, {2}...) que le dialogue attend après le joueur
+  valeurs-manquantes: 'Le dialogue &e{dialogue} &7attend &e{attendues} &7valeur(s) après le joueur.'
+  valeurs-inattendues: 'Le dialogue &e{dialogue} &7n''attend pas de valeur après le joueur.'
   dialogue-inconnu: 'Le dialogue &e{dialogue} &7n''existe pas.'
   dialogue-permission: 'Vous n''avez pas accès à ce dialogue.'
   joueur-introuvable: 'Le joueur &e{joueur} &7n''est pas connecté.'
