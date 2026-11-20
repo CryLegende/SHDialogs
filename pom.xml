@@ -6,7 +6,7 @@
 
     <groupId>org.Cry_Legende</groupId>
     <artifactId>SHDialogs</artifactId>
-    <version>1.3</version>
+    <version>1.4</version>
     <packaging>jar</packaging>
 
     <name>SHDialogs</name>
@@ -56,6 +56,10 @@
             <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
         <repository>
+            <id>placeholderapi</id>
+            <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
+        </repository>
+        <repository>
             <id>viaversion-repo</id>
             <url>https://repo.viaversion.com</url>
         </repository>
@@ -66,6 +70,13 @@
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
             <version>26.3.build.209-stable</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- PlaceholderAPI est facultatif : seule la classe PapiSupport s'en sert -->
+        <dependency>
+            <groupId>me.clip</groupId>
+            <artifactId>placeholderapi</artifactId>
+            <version>2.11.6</version>
             <scope>provided</scope>
         </dependency>
         <!-- ViaVersion est facultatif : seule la classe ViaSupport s'en sert -->

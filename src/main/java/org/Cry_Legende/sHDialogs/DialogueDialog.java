@@ -5,6 +5,7 @@ import io.papermc.paper.registry.data.dialog.ActionButton;
 import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.action.DialogAction;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
+import io.papermc.paper.registry.data.dialog.input.DialogInput;
 import io.papermc.paper.registry.data.dialog.type.DialogType;
 import io.papermc.paper.registry.data.dialog.type.MultiActionType;
 import net.kyori.adventure.text.Component;
@@ -18,11 +19,14 @@ import java.util.List;
  * texte, textes gris, boutons d'une couleur, infobulles structurées. Un bouton « url » ouvre l'adresse côté client (qui demande
  * confirmation) ; un bouton de commande renvoie au serveur la clé shdialogs:dialogue/&lt;dialogue&gt;/&lt;bouton&gt;, qui retrouve
  * la commande dans config.yml ; un bouton « fermer » et le bouton du bas portent l'action commune de fermeture
- * ({@link DialogBlindness#closeAction()}), qui rend la vue au joueur.
+ * ({@link DialogBlindness#closeAction()}), qui rend la vue au joueur. Un dialogue à champ texte a une saisie sous la clé
+ * {@link #INPUT_KEY}.
  */
 final class DialogueDialog {
 
     private static final int BODY_WIDTH = 300;
+    /** Clé du champ de saisie : le client renvoie le texte tapé sous ce nom, avec le clic d'un bouton de commande. */
+    static final String INPUT_KEY = "saisie";
 
     private DialogueDialog() {
     }
@@ -41,6 +45,17 @@ final class DialogueDialog {
         } else {
             // gardé ouvert au clic : un dialogue ouvert par la commande le remplace sans clignoter, sinon il est fermé
             DialogBlindness.stayOpen(start);
+        }
+        DialogueConfig.Field field = dialogue.field();
+        if (field != null) {
+            // le client renvoie le texte tapé avec le clic de chaque bouton de commande, sous la clé INPUT_KEY
+            String initial = field.initial() == null ? "" : field.initial();
+            if (initial.codePointCount(0, initial.length()) > field.maxLength()) {
+                initial = initial.substring(0, initial.offsetByCodePoints(0, field.maxLength()));
+            }
+            boolean labelled = field.label() != null && !field.label().isBlank();
+            start.inputs(List.of(DialogInput.text(INPUT_KEY, Texts.legacy(field.label())).width(BODY_WIDTH).labelVisible(labelled)
+                    .initial(initial).maxLength(field.maxLength()).build()));
         }
         DialogBase base = start.body(body).build();
 

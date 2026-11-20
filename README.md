@@ -47,18 +47,122 @@ La section `dialogues` de `config.yml` décrit autant de dialogues que voulu (ti
 - **Boutons « fermer »** (`fermer: true`) : ferment simplement le dialogue. Avec `bouton-fermer: ''`, le dialogue n'a plus de bouton en bas : c'est ainsi que `bienvenue` place « C'est parti ! » en premier, au-dessus de « Je joue avec un ami » et « Tutoriel détaillé ».
 - **Pas de `[close]` dans les menus** : un `[close]` laisse un instant sans écran entre le menu et le dialogue (clignotement). Le menu reste affiché, et SHDialogs le ferme au tick suivant, juste avant d'ouvrir le dialogue (même tick, même image côté client).
 
+### Dossier dialogues
+
+Les dialogues peuvent aussi être rangés dans `plugins/SHDialogs/dialogues/`. Chaque fichier `.yml` du dossier, sous-dossiers compris, ajoute des dialogues : les clés de premier niveau sont les identifiants, avec le même format que la section `dialogues` de `config.yml` (sans cette section au-dessus, les dialogues s'écrivent à la racine du fichier). `/shdialogs reload` relit le dossier comme `config.yml`.
+
+Les fichiers sont lus après `config.yml`, par ordre alphabétique de chemin. Un identifiant déjà défini est refusé, le premier lu gagne et le doublon est signalé par `/shdialogs reload` et `/shdialogs list`. Un fichier illisible empêche le rechargement, l'ancienne configuration reste en place et le fichier est nommé ; au démarrage il est ignoré et signalé dans la console et dans `/shdialogs list`.
+
+### Placeholders PlaceholderAPI
+
+Avec PlaceholderAPI (dépendance facultative), les `%...%` du `titre`, du `texte`, des `libelle`, des `infobulle`, du `bouton-fermer`, du champ texte (`libelle` et `defaut`) et des valeurs des conditions sont remplacés pour le joueur qui reçoit le dialogue, à l'ouverture. `{1}`, `{2}` et `{joueur}` sont remplacés d'abord. Sans PlaceholderAPI les textes restent tels quels. Les commandes des boutons ne reçoivent pas de placeholders, elles utilisent `{joueur}`.
+
+### Conditions
+
+Une condition est une chaîne `"<A> <opérateur> <B>"`, avec l'un de ces opérateurs.
+
+| Opérateur | Sens |
+|---|---|
+| `==`, `!=` | égal, différent |
+| `>=`, `<=`, `>`, `<` | comparaison de nombres |
+| `contient`, `!contient` | A contient B, A ne contient pas B (texte) |
+
+A et B passent par les valeurs (`{1}`, `{joueur}`, et `{saisie}` pour une exigence) puis par PlaceholderAPI. Si A et B se lisent comme des nombres (espaces et séparateurs de milliers ignorés, virgule ou point décimal, par exemple `300 000`, `1,5` ou `1.000.000`), ils sont comparés comme des nombres. Sinon le texte est comparé sans les codes couleur, sans tenir compte de la casse ni des accents, et `>=`, `<=`, `>` et `<` sont faux. Une liste de conditions (`si`) est vraie quand toutes le sont.
+
+### Versions
+
+La section `versions` d'un dialogue le change selon le joueur. Chaque version a un nom, des conditions (`si`) et peut remplacer `titre`, `texte`, `boutons` (tous à la fois), `bouton-fermer`, `colonnes`, `largeur-bouton` et `champ` (`false` pour le retirer). Tout le reste vient du dialogue.
+
+À l'ouverture, la première version, dans l'ordre du fichier, dont toutes les conditions sont vraies est montrée, sinon le dialogue lui-même. Le serveur retient la version montrée à chaque joueur : au clic, le bouton est cherché dans cette version, jamais d'après ce que dit le client. Un dialogue à versions est construit à chaque ouverture.
+
+```yaml
+grade:
+  titre:
+    - '&7&l« &b&lSkyHand &8&l»'
+    - '&fGrade de %player_name%'
+  texte:
+    - '&7Version de base.'
+  boutons:
+    base:
+      libelle: '&7Continuer'
+      commande: '[message] &7Bienvenue.'
+  versions:
+    expert:
+      si:
+        - '%player_level% >= 10'
+        - '%player_gamemode% != creative'
+      texte:
+        - '&7Version pour les joueurs de niveau 10 et plus.'
+```
+
+### Champ texte
+
+La clé `champ` ajoute un champ où le joueur tape un texte (champ de saisie des dialogues de Minecraft). Elle accepte `libelle` (le texte au-dessus du champ), `defaut` (le texte de départ, vide par défaut) et `longueur-max` (nombre de caractères au plus, 32 par défaut).
+
+Le texte tapé arrive avec le clic du bouton. Les commandes, les messages et les conditions des boutons peuvent l'utiliser avec `{saisie}`, après un nettoyage fait côté serveur : on ne garde que les lettres (accents compris), les chiffres, les espaces, les apostrophes et les traits d'union, les espaces multiples sont réduits à un et le texte est coupé à `longueur-max`. Rien d'autre n'entre jamais dans une commande, `abc; op x` devient `abc op x` et `§c` devient `c`. Sans champ, `{saisie}` est vide. `{saisie}` ne se place jamais en début de commande.
+
+```yaml
+runes:
+  titre:
+    - '&7&l« &d&lSkyHand &8&l»'
+    - '&fLe mot des runes'
+  champ:
+    libelle: '&7Votre mot'
+    longueur-max: 12
+  boutons:
+    valider:
+      libelle: '&a&lValider'
+      commande:
+        - '[console] say {joueur} propose {saisie}'
+```
+
+### Exigences d'un bouton
+
+La clé `exige` d'un bouton demande des objets et des conditions avant de lancer sa commande.
+
+| Clé | Rôle |
+|---|---|
+| `objets` | liste de `MATERIAL:quantité` ou `#tag_minecraft:quantité`, par exemple `HONEY_BOTTLE:3` ou `#minecraft:logs:4` |
+| `si` | conditions, comme ci-dessus |
+| `refus` | lignes lancées si l'exigence n'est pas remplie, avec les mêmes préfixes que `commande` (`[player]`, `[console]`, `[message]`) ; vide, le joueur reçoit un message d'erreur simple |
+
+Au clic, si toutes les conditions sont vraies et que l'inventaire contient les objets, ils sont retirés puis les `commande` du bouton sont lancées. Sinon seules les lignes `refus` sont lancées et rien n'est retiré. Seuls comptent les objets normaux, sans nom personnalisé, sans lore, sans enchantement ni données de plugin : un objet renommé n'est ni compté ni retiré. Le contrôle et le retrait se font dans le même tick, sur le scheduler du joueur (les mondes tournent en parallèle sur DivineMC). Plusieurs lignes qui visent la même matière ne comptent pas deux fois le même objet.
+
+```yaml
+echange:
+  titre:
+    - '&7&l« &d&lSkyHand &8&l»'
+    - '&fLe troqueur'
+  boutons:
+    echanger:
+      libelle: '&a&lÉchanger'
+      exige:
+        objets:
+          - 'HONEY_BOTTLE:3'
+          - '#minecraft:logs:4'
+        si:
+          - '%player_level% >= 10'
+        refus:
+          - '[message] &8&l« &c&lSH &8&l» &7Il vous manque &cquelque chose&7.'
+      commande:
+        - '[console] give {joueur} diamond 1'
+```
+
+Un `[console]` dans `refus` compte comme un `[console]` de `commande` : le dialogue ne s'ouvre que par la console ou le staff, une seule fois par ouverture. C'est vrai aussi d'un `[console]` placé dans une version.
+
 Utilisé sur : **Opale** (Purpur/DivineMC 1.21.11, Java 25).
 
 ## Dépendances
 
 - Optionnelle : `ViaVersion` (version du client, pour refuser `/shdialogs menu` aux clients trop anciens)
+- Optionnelle : `PlaceholderAPI` (placeholders `%...%` dans les textes et les conditions des dialogues)
 
 ## Commandes
 
 | Commande | Alias | Description | Permission |
 |---|---|---|---|
-| `/shdialogs reload` | — | Relit `config.yml` et `messages.yml`. Si l'un des deux est invalide, rien n'est remplacé et le fichier fautif est indiqué. | `shdialogs.admin.reload` |
-| `/shdialogs list` | — | Liste le menu et les dialogues : chargés, désactivés ou en erreur (avec la cause). | `shdialogs.admin.list` |
+| `/shdialogs reload` | — | Relit `config.yml`, `messages.yml` et le dossier `dialogues`. Si l'un d'eux est invalide, rien n'est remplacé et le fichier fautif est indiqué. Signale les identifiants définis deux fois. | `shdialogs.admin.reload` |
+| `/shdialogs list` | — | Liste le menu et les dialogues de `config.yml` et du dossier `dialogues` : chargés (avec leur fichier), désactivés, en doublon ou en erreur (avec la cause). | `shdialogs.admin.list` |
 | `/shdialogs menu` | — | Ouvre le menu SkyHand à la demande (outil de test du staff, joueur seulement). | `shdialogs.menu` |
 | `/shdialogs open <dialogue> [joueur] [valeurs...]` | — | Ouvre un dialogue de la section `dialogues` (à soi-même, ou à un joueur pour la console et le staff), avec ses valeurs `{1}`, `{2}`... | `shdialogs.open` (tous), `shdialogs.open.others` (op : autre joueur, valeurs, dialogue avec `[console]`) |
 
@@ -95,8 +199,12 @@ plugins/SHDialogs/
 │   │       └── discord, site, voter, boutique-web    liens web (bouton « url »)
 │   └── dialogues                dialogues à la demande (rechargés par /shdialogs reload)
 │       ├── titre, texte, boutons, colonnes, largeur-bouton, bouton-fermer, permission, attendre-menu, actif
+│       ├── champ                libelle, defaut, longueur-max (champ texte, {saisie})
+│       ├── versions             un bloc par version : si, puis titre, texte, boutons, bouton-fermer, colonnes, largeur-bouton, champ
+│       ├── boutons.*.exige      objets, si, refus (objets à retirer, conditions, lignes de refus)
 │       ├── nouveau-compagnon, nouvelle-particule, nouveau-titre    cosmétiques gagnés dans une box (valeurs {1} {2}, [console])
 │       └── vote, bienvenue, reglement                              exemples
+├── dialogues/                   un fichier .yml par groupe de dialogues, sous-dossiers compris (même format que la section dialogues)
 └── <a href="src/main/resources/messages.yml">messages.yml</a>
     ├── prefixe, couleurs        préfixe des messages et couleur par type (erreur, succès, info)
     └── erreur, succes, info, avertissement    messages du chat, par type

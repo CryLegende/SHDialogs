@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.configuration.ConfigurationSection;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -83,9 +84,10 @@ final class Texts {
     }
 
     /**
-     * Valeurs d'un dialogue ouvert par /shdialogs open &lt;dialogue&gt; &lt;joueur&gt; &lt;valeurs...&gt; : {1}, {2}... et {joueur}.
+     * Valeurs d'un dialogue ouvert par /shdialogs open &lt;dialogue&gt; &lt;joueur&gt; &lt;valeurs...&gt; : {1}, {2}... et {joueur},
+     * plus {saisie} (le texte tapé dans le champ, nettoyé par {@link #sanitizeInput}) au clic d'un bouton.
      */
-    private static final Pattern VALUE = Pattern.compile("\\{([1-9][0-9]?|joueur)}");
+    private static final Pattern VALUE = Pattern.compile("\\{([1-9][0-9]?|joueur|saisie)}");
 
     /**
      * Remplace {1}, {2}... et {joueur} en un seul passage (une valeur n'est pas réinterprétée). Une variable sans valeur
@@ -116,7 +118,7 @@ final class Texts {
             }
             Matcher matcher = VALUE.matcher(text);
             while (matcher.find()) {
-                if (!matcher.group(1).equals("joueur")) {
+                if (Character.isDigit(matcher.group(1).charAt(0))) {
                     max = Math.max(max, Integer.parseInt(matcher.group(1)));
                 }
             }
@@ -134,6 +136,52 @@ final class Texts {
             }
         }
         return false;
+    }
+
+    /** Apostrophes typographiques ramenées à l'apostrophe droite. */
+    private static final String APOSTROPHES = "’‘ʼ";
+    /** Traits d'union typographiques ramenés au trait d'union. */
+    private static final String HYPHENS = "‐‑";
+
+    /**
+     * Texte tapé par le joueur, nettoyé avant d'entrer dans une commande ou une condition : on ne garde que les lettres (accents
+     * compris), les chiffres, les espaces, les apostrophes et les traits d'union. Les espaces multiples sont réduits à un, le
+     * texte est coupé à {@code maxLength} caractères puis débarrassé des espaces de début et de fin. Rien d'autre ne passe.
+     */
+    static String sanitizeInput(String raw, int maxLength) {
+        if (raw == null || raw.isEmpty() || maxLength < 1) {
+            return "";
+        }
+        String text = Normalizer.normalize(raw, Normalizer.Form.NFC);
+        StringBuilder kept = new StringBuilder();
+        boolean lastSpace = false;
+        for (int i = 0; i < text.length(); ) {
+            int cp = text.codePointAt(i);
+            i += Character.charCount(cp);
+            if (Character.isLetter(cp) || Character.isDigit(cp)) {
+                kept.appendCodePoint(cp);
+                lastSpace = false;
+            } else if (cp == '\'' || cp == '-') {
+                kept.append((char) cp);
+                lastSpace = false;
+            } else if (APOSTROPHES.indexOf(cp) >= 0) {
+                kept.append('\'');
+                lastSpace = false;
+            } else if (HYPHENS.indexOf(cp) >= 0) {
+                kept.append('-');
+                lastSpace = false;
+            } else if (Character.getType(cp) == Character.SPACE_SEPARATOR) {
+                if (!lastSpace) {
+                    kept.append(' ');
+                    lastSpace = true;
+                }
+            }
+        }
+        String result = kept.toString();
+        if (result.codePointCount(0, result.length()) > maxLength) {
+            result = result.substring(0, result.offsetByCodePoints(0, maxLength));
+        }
+        return result.trim();
     }
 
     /**

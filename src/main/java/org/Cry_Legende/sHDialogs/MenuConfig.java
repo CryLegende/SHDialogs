@@ -30,19 +30,33 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
     }
 
     /**
-     * Un bouton : des actions (commandes, messages), une adresse web, ou rien (bouton « fermer » : le client referme le dialogue).
+     * Ce qu'un bouton de dialogue exige avant de lancer ses commandes : des objets dans l'inventaire et des conditions. Si tout
+     * est réuni, les objets sont retirés puis les commandes du bouton sont lancées ; sinon seules les lignes de refus le sont.
      */
-    record Button(String id, String label, List<String> tooltip, List<Action> actions, String url, String permission, boolean close) {
+    record Requirement(List<ItemRequirement.Item> items, List<Condition> conditions, List<Action> refusal) {
+    }
+
+    /**
+     * Un bouton : des actions (commandes, messages), une adresse web, ou rien (bouton « fermer » : le client referme le dialogue).
+     * Un bouton de dialogue peut avoir une exigence (null sans).
+     */
+    record Button(String id, String label, List<String> tooltip, List<Action> actions, String url, String permission, boolean close,
+                  Requirement requirement) {
+
+        Button(String id, String label, List<String> tooltip, List<Action> actions, String url, String permission, boolean close) {
+            this(id, label, tooltip, actions, url, permission, close, null);
+        }
 
         boolean isUrl() {
             return url != null;
         }
 
         /**
-         * Au moins une commande lancée par la console.
+         * Au moins une commande lancée par la console, dans les commandes du bouton ou dans ses lignes de refus.
          */
         boolean hasConsole() {
-            return actions.stream().anyMatch(action -> action.kind() == Action.Kind.CONSOLE);
+            return actions.stream().anyMatch(action -> action.kind() == Action.Kind.CONSOLE)
+                    || (requirement != null && requirement.refusal().stream().anyMatch(action -> action.kind() == Action.Kind.CONSOLE));
         }
 
         /**
@@ -69,7 +83,7 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
         if (menu == null) {
             return disabled();
         }
-        List<Button> buttons = readButtons(menu.getConfigurationSection("boutons"), warn);
+        List<Button> buttons = readButtons(menu.getConfigurationSection("boutons"), warn, false);
         // le menu s'ouvre depuis l'écran Échap sans passer par le serveur : un bouton [console] y servirait à tous, à tout moment
         buttons.removeIf(button -> {
             if (button.hasConsole()) {
@@ -94,9 +108,10 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
     }
 
     /**
-     * Les boutons actifs et valides d'une section « boutons » (menu ou dialogue), dans l'ordre du fichier.
+     * Les boutons actifs et valides d'une section « boutons » (menu ou dialogue), dans l'ordre du fichier. Les exigences
+     * (exige) ne sont lues que pour un dialogue : le menu est lu au démarrage, avant que les objets du serveur n'existent.
      */
-    static List<Button> readButtons(ConfigurationSection section, Consumer<String> warn) {
+    static List<Button> readButtons(ConfigurationSection section, Consumer<String> warn, boolean requirements) {
         List<Button> buttons = new ArrayList<>();
         if (section == null) {
             return buttons;
@@ -106,7 +121,7 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
             if (b == null || !b.getBoolean("actif", true)) {
                 continue;
             }
-            Button button = readButton(id, b, warn);
+            Button button = readButton(id, b, warn, requirements);
             if (button != null) {
                 buttons.add(button);
             }
@@ -114,7 +129,41 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
         return buttons;
     }
 
-    private static Button readButton(String id, ConfigurationSection b, Consumer<String> warn) {
+    /**
+     * Lit exige : objets (« MATERIAL:quantité », « #tag:quantité »), si (conditions) et refus (lignes lancées si l'exigence n'est
+     * pas remplie). Null, après l'avoir signalé, si elle est invalide ou vide.
+     */
+    private static Requirement readRequirement(String id, ConfigurationSection e, Consumer<String> warn) {
+        Consumer<String> problem = message -> warn.accept("Bouton « " + id + " » ignoré : exige : " + message);
+        List<ItemRequirement.Item> items = new ArrayList<>();
+        for (String line : Texts.lineList(e, "objets", List.of())) {
+            ItemRequirement.Item item = ItemRequirement.parse(line, problem);
+            if (item == null) {
+                return null;
+            }
+            items.add(item);
+        }
+        List<Condition> conditions = Condition.readAll(e, "si", problem);
+        if (conditions == null) {
+            return null;
+        }
+        List<Action> refusal = new ArrayList<>();
+        for (String line : Texts.lineList(e, "refus", List.of())) {
+            Action action = readAction(line);
+            if (action == null) {
+                problem.accept("ligne de refus invalide : " + line);
+                return null;
+            }
+            refusal.add(action);
+        }
+        if (items.isEmpty() && conditions.isEmpty()) {
+            problem.accept("ni objets ni si.");
+            return null;
+        }
+        return new Requirement(List.copyOf(items), conditions, List.copyOf(refusal));
+    }
+
+    private static Button readButton(String id, ConfigurationSection b, Consumer<String> warn, boolean requirements) {
         if (!ID.matcher(id).matches()) {
             warn.accept("Bouton « " + id + " » ignoré : l'identifiant doit contenir seulement a-z, 0-9, _ et - (40 caractères au plus).");
             return null;
@@ -152,7 +201,23 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
             }
             actions.add(action);
         }
-        return new Button(id, label, tooltip, List.copyOf(actions), null, permission == null ? "" : permission, false);
+        Requirement requirement = null;
+        if (b.isSet("exige")) {
+            if (!requirements) {
+                warn.accept("Bouton « " + id + " » du menu ignoré : exige est réservé aux dialogues de la section dialogues.");
+                return null;
+            }
+            ConfigurationSection e = b.getConfigurationSection("exige");
+            if (e == null) {
+                warn.accept("Bouton « " + id + " » ignoré : exige doit être une section (objets, si, refus).");
+                return null;
+            }
+            requirement = readRequirement(id, e, warn);
+            if (requirement == null) {
+                return null;
+            }
+        }
+        return new Button(id, label, tooltip, List.copyOf(actions), null, permission == null ? "" : permission, false, requirement);
     }
 
     /**

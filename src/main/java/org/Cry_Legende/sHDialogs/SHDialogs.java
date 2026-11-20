@@ -4,6 +4,7 @@ import io.papermc.paper.command.brigadier.BasicCommand;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.connection.PlayerGameConnection;
 import io.papermc.paper.dialog.Dialog;
+import io.papermc.paper.dialog.DialogResponseView;
 import io.papermc.paper.event.player.PlayerCustomClickEvent;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import io.papermc.paper.registry.RegistryAccess;
@@ -23,6 +24,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.plugin.IllegalPluginAccessException;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
@@ -36,6 +38,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 public final class SHDialogs extends JavaPlugin implements Listener {
 
@@ -50,15 +53,22 @@ public final class SHDialogs extends JavaPlugin implements Listener {
     private static final long WAIT_MENU_MS = 120_000;
 
     /**
-     * Dialogue de la section « dialogues » affiché à un joueur, avec ses valeurs ({1}, {2}... et {joueur}).
+     * Dialogue de la section « dialogues » affiché à un joueur : la version montrée (vide pour le dialogue de base) et ses
+     * valeurs ({1}, {2}... et {joueur}). Le clic retrouve le bouton dans cette version, jamais d'après ce que dit le client.
      */
-    private record Opening(String dialogueId, Map<String, String> values) {
+    private record Opening(String dialogueId, String version, Map<String, String> values) {
+    }
+
+    /**
+     * Ce qu'une ouverture doit montrer : le dialogue et ses valeurs. La version et les textes sont choisis au moment d'afficher.
+     */
+    private record Request(DialogueConfig dialogue, Map<String, String> values) {
     }
 
     /**
      * Dialogue « attendre-menu » en attente de la fermeture du menu ouvert.
      */
-    private record Waiting(Opening opening, Dialog dialog, long at) {
+    private record Waiting(Request request, long at) {
     }
 
     private final Map<UUID, Long> lastMenuClick = new ConcurrentHashMap<>();
@@ -70,15 +80,19 @@ public final class SHDialogs extends JavaPlugin implements Listener {
     private volatile Map<String, DialogueConfig> dialogues = Map.of();
     private volatile Map<String, Dialog> dialogs = Map.of();
     private volatile List<DialogueRow> rows = List.of();
+    /** Fichiers du dossier dialogues qui n'ont pas pu être lus au démarrage (« chemin : erreur »). */
+    private volatile List<String> unreadableFiles = List.of();
     private volatile ConfigurationSection words;
     private String registeredMenuSignature = "";
     private boolean viaVersion;
+    private boolean papi;
     private DialogBlindness blindness;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         viaVersion = getServer().getPluginManager().isPluginEnabled("ViaVersion");
+        papi = getServer().getPluginManager().isPluginEnabled("PlaceholderAPI");
         blindness = new DialogBlindness(this, true);
         loadConfiguration();
         // ce que le bootstrap a enregistré au démarrage : base de comparaison pour /shdialogs reload
@@ -86,7 +100,7 @@ public final class SHDialogs extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         registerCommands();
         diagnoseMenu();
-        getLogger().info("SHDialogs prêt (menu " + (menu.enabled() ? menu.buttons().size() + " boutons" : "désactivé") + ", "
+        getLogger().info("SHDialogs prêt (placeholders " + (papi ? "PlaceholderAPI" : "sans PlaceholderAPI") + ", menu " + (menu.enabled() ? menu.buttons().size() + " boutons" : "désactivé") + ", "
                 + dialogues.size() + " dialogue(s) : " + String.join(", ", dialogues.keySet()) + ").");
     }
 
@@ -101,7 +115,8 @@ public final class SHDialogs extends JavaPlugin implements Listener {
     }
 
     /**
-     * Démarrage : relit config.yml et messages.yml sans rien exiger (un fichier illisible laisse les valeurs du jar).
+     * Démarrage : relit config.yml, messages.yml et le dossier dialogues sans rien exiger (un fichier illisible laisse les valeurs
+     * du jar, un fichier de dialogues illisible est signalé et ignoré).
      * Le dialogue du menu, lui, reste celui du démarrage : seules les commandes, permissions et messages changent ensuite.
      */
     private void loadConfiguration() {
@@ -113,12 +128,17 @@ public final class SHDialogs extends JavaPlugin implements Listener {
             getLogger().severe("messages.yml illisible, textes du jar utilisés : " + describe(e));
             messageFile = MessagesFile.jarOnly(this);
         }
-        apply(getConfig(), messageFile);
+        DialogueFiles.Loaded files = DialogueFiles.read(getDataFolder().toPath());
+        for (String error : files.errors()) {
+            getLogger().severe("Dialogues illisibles, fichier ignoré : " + error);
+        }
+        unreadableFiles = files.errors();
+        apply(getConfig(), messageFile, files.sources());
     }
 
     /**
-     * /shdialogs reload : lit config.yml et messages.yml en mode strict avant de rien remplacer. Renvoie null si tout est
-     * lu, sinon « fichier : erreur » et l'ancienne configuration reste en mémoire.
+     * /shdialogs reload : lit config.yml, messages.yml et les fichiers du dossier dialogues en mode strict avant de rien
+     * remplacer. Renvoie null si tout est lu, sinon « fichier : erreur » et l'ancienne configuration reste en mémoire.
      */
     private String reloadAll() {
         FileConfiguration candidate;
@@ -133,7 +153,12 @@ public final class SHDialogs extends JavaPlugin implements Listener {
         } catch (IOException | InvalidConfigurationException e) {
             return MessagesFile.NAME + " : " + describe(e);
         }
-        apply(candidate, messageFile);
+        DialogueFiles.Loaded files = DialogueFiles.read(getDataFolder().toPath());
+        if (!files.errors().isEmpty()) {
+            return files.errors().get(0);
+        }
+        unreadableFiles = List.of();
+        apply(candidate, messageFile, files.sources());
         return null;
     }
 
@@ -144,64 +169,63 @@ public final class SHDialogs extends JavaPlugin implements Listener {
     }
 
     /**
-     * Construit messages, menu, dialogues et dialogues Paper depuis la configuration lue, puis les remplace d'un bloc.
+     * Construit messages, menu, dialogues et dialogues Paper depuis la configuration lue (config.yml puis les fichiers du dossier
+     * dialogues), puis les remplace d'un bloc.
      */
-    private void apply(FileConfiguration config, ConfigurationSection messageFile) {
-        List<String> problems = new ArrayList<>();
-        Consumer<String> warn = message -> {
-            getLogger().warning(message);
-            problems.add(message);
-        };
+    private void apply(FileConfiguration config, ConfigurationSection messageFile, List<DialogueConfig.Source> files) {
+        Consumer<String> warn = message -> getLogger().warning(message);
         Messages newMessages = new Messages(messageFile);
         MenuConfig newMenu = MenuConfig.read(config, warn);
-        Map<String, DialogueConfig> newDialogues = DialogueConfig.readAll(config, config.getString("menu.bouton-fermer", "&c⤾ &fFermer"), warn);
-        Map<String, Dialog> newDialogs = buildDialogs(newDialogues, warn);
-        List<DialogueRow> newRows = describeDialogues(config, newDialogues, newDialogs, problems);
+        List<DialogueConfig.Source> sources = new ArrayList<>();
+        ConfigurationSection section = config.getConfigurationSection("dialogues");
+        if (section != null) {
+            sources.add(new DialogueConfig.Source("config.yml", section));
+        }
+        sources.addAll(files);
+        DialogueConfig.Loaded loaded = DialogueConfig.readAll(sources, config.getString("menu.bouton-fermer", "&c⤾ &fFermer"), warn);
+        Map<String, String> failures = new HashMap<>();
+        Map<String, Dialog> newDialogs = buildDialogs(loaded.dialogues(), failures, warn);
+        List<DialogueRow> newRows = describeDialogues(loaded, failures);
         words = messageFile;
         messages = newMessages;
         menu = newMenu;
-        dialogues = newDialogues;
+        dialogues = loaded.dialogues();
         dialogs = newDialogs;
         rows = newRows;
         blindness.setEnabled(config.getBoolean("aveugler-pendant-dialogues", true));
     }
 
     /**
-     * Une ligne par dialogue de la section « dialogues » : chargé, désactivé ou en erreur (avec sa cause).
+     * Une ligne par dialogue lu : chargé, désactivé, en doublon ou en erreur (avec sa cause).
      */
-    private List<DialogueRow> describeDialogues(FileConfiguration config, Map<String, DialogueConfig> parsed, Map<String, Dialog> built,
-                                                List<String> problems) {
+    private List<DialogueRow> describeDialogues(DialogueConfig.Loaded loaded, Map<String, String> failures) {
         List<DialogueRow> result = new ArrayList<>();
-        ConfigurationSection section = config.getConfigurationSection("dialogues");
-        if (section == null) {
-            return result;
-        }
-        for (String id : section.getKeys(false)) {
-            ConfigurationSection d = section.getConfigurationSection(id);
-            if (d == null) {
-                continue;
-            }
-            if (!d.getBoolean("actif", true)) {
-                result.add(new DialogueRow(id, DialogueRow.State.DESACTIVE, "", 0, "", ""));
-            } else if (built.containsKey(id) && parsed.containsKey(id)) {
-                DialogueConfig dialogue = parsed.get(id);
-                result.add(new DialogueRow(id, DialogueRow.State.OK, Texts.stripColors(String.join(" ", dialogue.title())), dialogue.buttons().size(),
-                        dialogue.permission(), ""));
-            } else {
-                String marker = "« " + id + " »";
-                String cause = problems.stream().filter(problem -> problem.contains(marker)).findFirst().orElse("non construit");
-                result.add(new DialogueRow(id, DialogueRow.State.ERREUR, "", 0, "", cause));
+        for (DialogueConfig.Entry entry : loaded.entries()) {
+            DialogueConfig dialogue = loaded.dialogues().get(entry.id());
+            switch (entry.state()) {
+                case OK -> {
+                    String failure = failures.get(entry.id());
+                    if (failure != null) {
+                        result.add(new DialogueRow(entry.id(), DialogueRow.State.ERREUR, "", 0, "", failure, entry.file()));
+                    } else {
+                        result.add(new DialogueRow(entry.id(), DialogueRow.State.OK, Texts.stripColors(String.join(" ", dialogue.title())),
+                                dialogue.buttons().size(), dialogue.permission(), "", entry.file()));
+                    }
+                }
+                case DESACTIVE -> result.add(new DialogueRow(entry.id(), DialogueRow.State.DESACTIVE, "", 0, "", "", entry.file()));
+                case ERREUR -> result.add(new DialogueRow(entry.id(), DialogueRow.State.ERREUR, "", 0, "", entry.detail(), entry.file()));
+                case DOUBLON -> result.add(new DialogueRow(entry.id(), DialogueRow.State.DOUBLON, "", 0, "", entry.detail(), entry.file()));
             }
         }
         return result;
     }
 
     /**
-     * Ligne de /shdialogs list.
+     * Ligne de /shdialogs list : {@code cause} est la cause d'une erreur, ou le fichier qui avait déjà ce dialogue pour un doublon.
      */
-    private record DialogueRow(String id, State state, String title, int buttons, String permission, String cause) {
+    private record DialogueRow(String id, State state, String title, int buttons, String permission, String cause, String file) {
         enum State {
-            OK, DESACTIVE, ERREUR
+            OK, DESACTIVE, ERREUR, DOUBLON
         }
     }
 
@@ -224,13 +248,19 @@ public final class SHDialogs extends JavaPlugin implements Listener {
         long failed = rows.stream().filter(row -> row.state() == DialogueRow.State.ERREUR).count();
         messages.send(sender, failed > 0 ? Messages.Type.AVERTISSEMENT : Messages.Type.INFO, "reload-bilan",
                 "charges", String.valueOf(loaded), "erreurs", String.valueOf(failed));
+        for (DialogueRow row : rows) {
+            if (row.state() == DialogueRow.State.DOUBLON) {
+                messages.send(sender, Messages.Type.AVERTISSEMENT, "reload-doublon", "dialogue", row.id(), "fichier", row.file(),
+                        "premier", row.cause());
+            }
+        }
         if (!menu.signature().equals(registeredMenuSignature)) {
             messages.send(sender, Messages.Type.INFO, "menu-redemarrage");
         }
     }
 
     /**
-     * /shdialogs list : le menu et chaque dialogue de la section « dialogues » avec son état.
+     * /shdialogs list : le menu et chaque dialogue lu (config.yml et dossier dialogues) avec son état.
      */
     private void listCommand(CommandSender sender) {
         MenuConfig current = menu;
@@ -241,6 +271,10 @@ public final class SHDialogs extends JavaPlugin implements Listener {
         } else {
             messages.send(sender, Messages.Type.INFO, "list-menu-desactive");
         }
+        for (String error : unreadableFiles) {
+            String[] parts = error.split(" : ", 2);
+            messages.send(sender, Messages.Type.ERREUR, "list-fichier-illisible", "fichier", parts[0], "cause", parts.length > 1 ? parts[1] : "");
+        }
         List<DialogueRow> current2 = rows;
         if (current2.isEmpty()) {
             messages.send(sender, Messages.Type.INFO, "list-vide");
@@ -249,24 +283,32 @@ public final class SHDialogs extends JavaPlugin implements Listener {
         for (DialogueRow row : current2) {
             switch (row.state()) {
                 case OK -> messages.send(sender, Messages.Type.INFO, "list-dialogue", "dialogue", row.id(), "titre", row.title(),
-                        "boutons", String.valueOf(row.buttons()), "permission", row.permission().isEmpty() ? word("aucune") : row.permission());
+                        "boutons", String.valueOf(row.buttons()), "permission", row.permission().isEmpty() ? word("aucune") : row.permission(),
+                        "fichier", row.file());
                 case DESACTIVE -> messages.send(sender, Messages.Type.INFO, "list-desactive", "dialogue", row.id());
                 case ERREUR -> messages.send(sender, Messages.Type.ERREUR, "list-erreur", "dialogue", row.id(), "cause", row.cause());
+                case DOUBLON -> messages.send(sender, Messages.Type.AVERTISSEMENT, "list-doublon", "dialogue", row.id(), "fichier", row.file(),
+                        "premier", row.cause());
             }
         }
     }
 
     /**
-     * Construit les dialogues Paper de la section « dialogues ». Un dialogue qui échoue est signalé dans la console et ne
-     * s'ouvre pas (le joueur reçoit un message d'erreur).
+     * Construit les dialogues Paper (le dialogue de base et chacune de ses versions). Un dialogue qui échoue est signalé dans la
+     * console, noté dans {@code failures} et ne s'ouvre pas (le joueur reçoit un message d'erreur).
      */
-    private Map<String, Dialog> buildDialogs(Map<String, DialogueConfig> configs, Consumer<String> warn) {
+    private Map<String, Dialog> buildDialogs(Map<String, DialogueConfig> configs, Map<String, String> failures, Consumer<String> warn) {
         Map<String, Dialog> built = new HashMap<>();
         for (DialogueConfig dialogue : configs.values()) {
             try {
-                built.put(dialogue.id(), DialogueDialog.create(dialogue));
+                built.put(dialogue.id(), DialogueDialog.create(dialogue.variant("")));
+                for (DialogueConfig.Variant variant : dialogue.variants()) {
+                    DialogueDialog.create(variant.dialogue());
+                }
             } catch (RuntimeException e) {
-                warn.accept("Dialogue « " + dialogue.id() + " » non construit : " + e);
+                String message = "Dialogue « " + dialogue.id() + " » non construit : " + e;
+                warn.accept(message);
+                failures.put(dialogue.id(), message);
             }
         }
         return Map.copyOf(built);
@@ -280,6 +322,46 @@ public final class SHDialogs extends JavaPlugin implements Listener {
         } else {
             getServer().getScheduler().runTask(this, task);
         }
+    }
+
+    /**
+     * Lance la tâche sur le scheduler du joueur, au tick qui suit après {@code delay} ticks (0 : dès que possible). Les mondes
+     * tournent en parallèle : ce qui lit ou change l'inventaire, les effets ou l'écran d'un joueur s'exécute sur son propre thread.
+     * Sans effet si le joueur a quitté ou si le plugin s'arrête.
+     */
+    private void onPlayer(Player player, long delay, Runnable task) {
+        try {
+            if (delay <= 0) {
+                player.getScheduler().run(this, scheduled -> task.run(), null);
+            } else {
+                player.getScheduler().runDelayed(this, scheduled -> task.run(), null, delay);
+            }
+        } catch (IllegalPluginAccessException e) {
+            // plugin en cours d'arrêt
+        }
+    }
+
+    /**
+     * Le texte avec ses placeholders PlaceholderAPI résolus pour ce joueur (inchangé sans PlaceholderAPI). Les codes § d'un
+     * résultat deviennent des &amp; : les textes du plugin n'utilisent que ceux-ci.
+     */
+    private String placeholders(Player player, String text) {
+        if (!papi || text == null || text.indexOf('%') < 0) {
+            return text;
+        }
+        try {
+            return PapiSupport.set(player, text).replace('§', '&');
+        } catch (RuntimeException | LinkageError e) {
+            getLogger().warning("Placeholder non résolu pour " + player.getName() + " : " + e);
+            return text;
+        }
+    }
+
+    /**
+     * Les valeurs du dialogue ({1}, {2}, {joueur}, {saisie}) puis les placeholders : ce qui sert aux conditions.
+     */
+    private UnaryOperator<String> resolver(Player player, Map<String, String> values) {
+        return text -> placeholders(player, Texts.fillValues(text, values));
     }
 
     /**
@@ -346,7 +428,7 @@ public final class SHDialogs extends JavaPlugin implements Listener {
             waiting.remove(uuid, pending);
             return;
         }
-        getServer().getScheduler().runTask(this, () -> {
+        onPlayer(player, 1, () -> {
             if (waiting.get(uuid) != pending || !player.isOnline()) {
                 return;
             }
@@ -359,9 +441,9 @@ public final class SHDialogs extends JavaPlugin implements Listener {
             }
             waiting.remove(uuid, pending);
             try {
-                show(player, pending.dialog(), pending.opening());
+                show(player, pending.request());
             } catch (RuntimeException e) {
-                getLogger().warning("Dialogue « " + pending.opening().dialogueId() + " » non affiché à " + player.getName() + " : " + e);
+                getLogger().warning("Dialogue « " + pending.request().dialogue().id() + " » non affiché à " + player.getName() + " : " + e);
             }
         });
     }
@@ -398,11 +480,25 @@ public final class SHDialogs extends JavaPlugin implements Listener {
             } else if (value.startsWith("dialogue/")) {
                 String[] parts = value.substring("dialogue/".length()).split("/", 2);
                 if (parts.length == 2) {
-                    sync(() -> onDialogueClick(player, parts[0], parts[1]));
+                    // le texte du champ est lu ici, avec l'événement ; il est nettoyé au clic, d'après le champ du dialogue montré
+                    String input = typedText(event);
+                    onPlayer(player, 0, () -> onDialogueClick(player, parts[0], parts[1], input));
                 }
             }
         } catch (RuntimeException e) {
             getLogger().warning("Clic de dialogue ignoré (" + id.asString() + ") : " + e);
+        }
+    }
+
+    /**
+     * Le texte que le client dit avoir tapé dans le champ du dialogue, tel quel : une source non fiable, nettoyée avant tout usage.
+     */
+    private static String typedText(PlayerCustomClickEvent event) {
+        try {
+            DialogResponseView view = event.getDialogResponseView();
+            return view == null ? null : view.getText(DialogueDialog.INPUT_KEY);
+        } catch (RuntimeException e) {
+            return null;
         }
     }
 
@@ -422,9 +518,10 @@ public final class SHDialogs extends JavaPlugin implements Listener {
 
     /**
      * Clic sur un bouton de commande d'un dialogue de la section « dialogues » : mêmes contrôles que le menu, avec en plus la
-     * permission du dialogue.
+     * permission du dialogue. Le bouton est cherché dans la version que le serveur a montrée à ce joueur, et {saisie} est le
+     * texte du champ, nettoyé d'après le champ de cette version. S'exécute sur le scheduler du joueur.
      */
-    private void onDialogueClick(Player player, String dialogueId, String buttonId) {
+    private void onDialogueClick(Player player, String dialogueId, String buttonId, String typed) {
         if (throttled(player)) {
             return;
         }
@@ -434,17 +531,23 @@ public final class SHDialogs extends JavaPlugin implements Listener {
             return;
         }
         Map<String, String> values = Map.of("joueur", player.getName());
-        if (dialogue != null && (dialogue.trusted() || dialogue.valueCount() > 0)) {
-            // valeurs ou commandes de la console : le bouton ne vaut que pour ce dialogue ouvert à ce joueur par le serveur, et
-            // une seule fois (le client peut renvoyer la clé du clic quand il veut)
+        DialogueConfig shown = dialogue;
+        boolean once = dialogue != null && (dialogue.trusted() || dialogue.valueCount() > 0);
+        if (dialogue != null && (once || !dialogue.variants().isEmpty())) {
+            // valeurs, version ou commandes de la console : le bouton ne vaut que pour ce dialogue ouvert à ce joueur par le
+            // serveur. Avec des valeurs ou des commandes de la console, une seule fois (le client peut renvoyer la clé du clic
+            // quand il veut)
             Opening opening = openings.get(player.getUniqueId());
-            if (opening == null || !opening.dialogueId().equals(dialogueId) || !openings.remove(player.getUniqueId(), opening)) {
+            if (opening == null || !opening.dialogueId().equals(dialogueId) || (once && !openings.remove(player.getUniqueId(), opening))) {
                 messages.send(player, Messages.Type.ERREUR, "bouton-indisponible");
                 return;
             }
             values = opening.values();
+            shown = dialogue.variant(opening.version());
         }
-        runButton(player, buttonId, dialogue == null ? null : dialogue.button(buttonId), values);
+        Map<String, String> all = new HashMap<>(values);
+        all.put("saisie", shown == null || shown.field() == null ? "" : Texts.sanitizeInput(typed, shown.field().maxLength()));
+        runButton(player, buttonId, shown == null ? null : shown.button(buttonId), Map.copyOf(all));
     }
 
     /**
@@ -458,7 +561,8 @@ public final class SHDialogs extends JavaPlugin implements Listener {
 
     /**
      * Lance les actions du bouton dans l'ordre : commandes du joueur, de la console ([console]) et messages ([message]), avec
-     * les valeurs du dialogue ({1}, {2}... et {joueur}).
+     * les valeurs du dialogue ({1}, {2}, {joueur} et {saisie}). Un bouton qui a une exigence ne les lance que si elle est remplie
+     * (les objets sont alors retirés) ; sinon il lance ses lignes de refus.
      */
     private void runButton(Player player, String buttonId, MenuConfig.Button button, Map<String, String> values) {
         try {
@@ -473,7 +577,23 @@ public final class SHDialogs extends JavaPlugin implements Listener {
                 messages.send(player, Messages.Type.ERREUR, "bouton-permission", "bouton", Texts.stripColors(button.label()));
                 return;
             }
-            for (MenuConfig.Action action : button.actions()) {
+            List<MenuConfig.Action> actions = button.actions();
+            MenuConfig.Requirement requirement = button.requirement();
+            if (requirement != null) {
+                // conditions, contrôle et retrait des objets : tout dans ce même tick, sur le scheduler du joueur
+                boolean met = Condition.all(requirement.conditions(), resolver(player, values))
+                        && (requirement.items().isEmpty() || ItemRequirement.take(player, requirement.items()));
+                if (!met) {
+                    actions = requirement.refusal();
+                    if (actions.isEmpty()) {
+                        messages.send(player, Messages.Type.ERREUR, "exigence-refusee");
+                    }
+                } else if (!requirement.items().isEmpty()) {
+                    getLogger().info("Bouton « " + buttonId + " » de " + player.getName() + " : objets retirés ("
+                            + requirement.items().stream().map(ItemRequirement.Item::text).collect(java.util.stream.Collectors.joining(", ")) + ").");
+                }
+            }
+            for (MenuConfig.Action action : actions) {
                 String text = Texts.fillValues(action.text(), values);
                 switch (action.kind()) {
                     case PLAYER -> {
@@ -582,37 +702,27 @@ public final class SHDialogs extends JavaPlugin implements Listener {
             }
             return;
         }
-        Dialog dialog = dialogs.get(dialogue.id());
-        if (dialog != null && dialogue.showsValues()) {
-            // valeurs dans les textes : construit pour cette ouverture
-            try {
-                dialog = DialogueDialog.create(dialogue.filled(values));
-            } catch (RuntimeException e) {
-                getLogger().warning("Dialogue « " + dialogue.id() + " » non construit avec ses valeurs : " + e);
-                dialog = null;
-            }
-        }
-        if (dialog == null) {
+        if (!dialogs.containsKey(dialogue.id())) {
             messages.send(sender, Messages.Type.ERREUR, "erreur-interne");
             return;
         }
-        open(sender, target, dialog, new Opening(dialogue.id(), Map.copyOf(values)), dialogue.waitMenu());
+        open(sender, target, new Request(dialogue, Map.copyOf(values)));
         if (target != sender && sender instanceof Player) {
             messages.send(sender, Messages.Type.SUCCES, "ouvert", "dialogue", dialogue.id(), "joueur", target.getName());
         }
     }
 
-    private void open(CommandSender sender, Player target, Dialog dialog, Opening opening, boolean waitMenu) {
+    private void open(CommandSender sender, Player target, Request request) {
         // au tick suivant : la commande est souvent lancée depuis l'événement de clic d'un menu DeluxeMenus, qu'on ne ferme pas ici
-        getServer().getScheduler().runTask(this, () -> {
+        onPlayer(target, 1, () -> {
             if (!target.isOnline()) {
                 return;
             }
             try {
                 if (target.getOpenInventory().getType() != InventoryType.CRAFTING) {
-                    if (waitMenu) {
+                    if (request.dialogue().waitMenu()) {
                         // attendre-menu : le joueur regarde encore un menu (le lot d'une box...), le dialogue s'affichera à sa fermeture
-                        waiting.put(target.getUniqueId(), new Waiting(opening, dialog, System.currentTimeMillis()));
+                        waiting.put(target.getUniqueId(), new Waiting(request, System.currentTimeMillis()));
                         return;
                     }
                     // Les menus n'ont plus de [close] (il laissait un instant sans écran entre le menu et le dialogue) : le menu
@@ -620,12 +730,33 @@ public final class SHDialogs extends JavaPlugin implements Listener {
                     // les traite dans la même image : pas de clignotement, et plus de menu fantôme ouvert côté serveur.
                     target.closeInventory();
                 }
-                show(target, dialog, opening);
+                show(target, request);
             } catch (RuntimeException e) {
                 getLogger().warning("Dialogue non affiché à " + target.getName() + " : " + e);
                 messages.send(sender, Messages.Type.ERREUR, "erreur-interne");
             }
         });
+    }
+
+    /**
+     * Affiche un dialogue de la section « dialogues » à ce joueur. La version est choisie ici, à l'ouverture, d'après ses
+     * conditions (valeurs du dialogue puis placeholders, pour ce joueur), et les textes reçoivent leurs valeurs et placeholders.
+     * Le serveur retient la version montrée : au clic, le bouton est cherché dans celle-là.
+     */
+    private void show(Player player, Request request) {
+        DialogueConfig base = request.dialogue();
+        UnaryOperator<String> resolve = resolver(player, request.values());
+        DialogueConfig chosen = base.select(resolve);
+        Dialog dialog;
+        if (base.dynamic()) {
+            dialog = DialogueDialog.create(chosen.rendered(resolve));
+        } else {
+            dialog = dialogs.get(base.id());
+            if (dialog == null) {
+                throw new IllegalStateException("dialogue non construit");
+            }
+        }
+        show(player, dialog, new Opening(base.id(), chosen.version(), request.values()));
     }
 
     /**

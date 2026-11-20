@@ -38,6 +38,10 @@ erreur:
   reload-erreur: 'Rechargement refusé : &c{fichier}&7 est invalide, l''ancienne configuration reste en place. &c{erreur}'
   # {dialogue} et {cause}
   list-erreur: '&c{dialogue} &7: &cen erreur&7 ({cause})'
+  # {fichier} et {cause} : fichier du dossier dialogues qui n'a pas pu être lu
+  list-fichier-illisible: '&c{fichier} &7est illisible et ignoré (&c{cause}&7).'
+  # Bouton dont l'exigence n'est pas remplie et qui n'a pas de lignes refus
+  exigence-refusee: 'Vous n''avez pas ce qu''il faut pour faire cela.'
 
 succes:
   recharge: 'Configuration &arechargée&7.'
@@ -52,12 +56,18 @@ info:
   list-menu: 'Menu SkyHand : &e{boutons}&7 boutons, écran Échap {echap}, actions rapides {rapides}.'
   list-menu-desactive: 'Menu SkyHand : &edésactivé&7.'
   list-vide: 'Aucun dialogue dans la section &edialogues&7 du config.yml.'
-  # {dialogue}, {titre}, {boutons} et {permission}
-  list-dialogue: '&a{dialogue} &7: {titre} &7({boutons} boutons, permission : {permission})'
+  # {dialogue}, {titre}, {boutons}, {permission} et {fichier} (config.yml ou fichier du dossier dialogues)
+  list-dialogue: '&a{dialogue} &7: {titre} &7({boutons} boutons, permission : {permission}, {fichier})'
   list-desactive: '&e{dialogue} &7: désactivé (&eactif: false&7)'
 
 avertissement:
+  # Même texte que info.reload-bilan, utilisé quand au moins un dialogue est en erreur
+  reload-bilan: '&e{charges}&7 dialogue(s) chargé(s), &c{erreurs}&7 en erreur.'
   # Client sans dialogues (avant la 1.21.6) : pas de repli, les menus DeluxeMenus gardent leur texte classique.
   # L'avertissement va à celui qui lance la commande : au joueur lui-même, ou au staff / à la console s'ils l'ouvrent à un autre joueur.
   version-ancienne: 'Votre version de Minecraft ne gère pas les dialogues : il faut la &e1.21.6 &7ou plus.'
   version-ancienne-autre: 'Le joueur &e{joueur} &7ne gère pas les dialogues (&e1.21.6 &7minimum).'
+  # Identifiant défini deux fois : le premier lu est gardé.
+  # {dialogue}, {fichier} (celui qui est ignoré) et {premier} (celui qui est gardé)
+  reload-doublon: '&c{dialogue} &7est défini deux fois, celui de &e{fichier} &7est ignoré et celui de &e{premier} &7est gardé.'
+  list-doublon: '&c{dialogue} &7est en doublon, celui de &e{fichier} &7est ignoré (déjà défini dans &e{premier}&7).'

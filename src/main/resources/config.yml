@@ -10,10 +10,19 @@
 # Ils sont construits à l'exécution : /shdialogs reload les recharge, sans redémarrage. Les clients plus anciens que la
 # 1.21.6 ne les voient pas : ils reçoivent seulement un avertissement.
 #
+# Dossier dialogues : chaque fichier .yml de plugins/SHDialogs/dialogues/ (sous-dossiers compris) ajoute des dialogues, écrits
+# à la racine du fichier, avec le même format que la section « dialogues » de ce fichier (une clé par dialogue, c'est son
+# identifiant). Un identifiant déjà défini est refusé : le premier lu gagne (ce fichier, puis les fichiers du dossier par ordre
+# alphabétique de chemin) et le doublon est signalé par /shdialogs reload et /shdialogs list. /shdialogs reload relit aussi le
+# dossier ; un fichier illisible empêche le rechargement et est nommé.
+#
+# Dépendance facultative : PlaceholderAPI, pour les placeholders %...% des textes et des conditions des dialogues.
+#
 # Commandes (la console peut utiliser reload, list et open avec un joueur) :
-#   /shdialogs reload                         Relit ce fichier et messages.yml. Si l'un des deux est invalide, rien n'est
-#                                             remplacé et le fichier fautif est indiqué.
-#   /shdialogs list                           Liste le menu et les dialogues : chargés, désactivés ou en erreur (avec la cause).
+#   /shdialogs reload                         Relit ce fichier, messages.yml et le dossier dialogues. Si l'un d'eux est invalide,
+#                                             rien n'est remplacé et le fichier fautif est indiqué.
+#   /shdialogs list                           Liste le menu et les dialogues : chargés (avec leur fichier), désactivés, en doublon
+#                                             ou en erreur (avec la cause).
 #   /shdialogs menu                           Ouvre le menu SkyHand à soi-même (test, joueur seulement).
 #   /shdialogs open <dialogue> [joueur]       Ouvre un dialogue à soi-même, ou à un autre joueur.
 #   /shdialogs open <dialogue> <joueur> <valeurs...>
@@ -147,6 +156,77 @@ menu:
 # un dialogue qui attend {1} ne s'ouvre pas sans elles.
 # attendre-menu: true : si le joueur a un menu ouvert (le lot d'une box...), le dialogue s'affiche quand il le ferme (dans
 # les 2 minutes) au lieu de fermer le menu.
+#
+# Placeholders PlaceholderAPI : %...% est remplacé pour le joueur qui reçoit le dialogue, à l'ouverture, dans titre, texte,
+# libelle, infobulle, bouton-fermer, champ (libelle et defaut) et dans les valeurs des conditions. {1}, {2}... et {joueur} sont
+# remplacés d'abord. Sans PlaceholderAPI le texte reste tel quel. Les commandes ne reçoivent pas de placeholders : utilisez {joueur}.
+#
+# Conditions : une condition s'écrit « A opérateur B », avec un de ces opérateurs :
+#   ==  !=                 égal, différent
+#   >=  <=  >  <           plus grand ou égal, plus petit ou égal, plus grand, plus petit (sur des nombres)
+#   contient  !contient    A contient B, A ne contient pas B (sur du texte)
+# A et B reçoivent d'abord {1}, {joueur}... (et {saisie} dans exige) puis les placeholders. Si A et B se lisent comme des nombres
+# (espaces et séparateurs de milliers ignorés, virgule ou point décimal : « 300 000 », « 1,5 », « 1.000.000 »), ils sont
+# comparés comme des nombres. Sinon le texte est comparé sans codes couleur, sans tenir compte de la casse ni des accents, et
+# >=, <=, > et < sont faux. Une liste de conditions est vraie quand toutes le sont.
+#
+# versions : remplace une partie du dialogue selon le joueur. Une clé par version (son nom), dans l'ordre. Chaque version a
+# des conditions (si, obligatoires) et peut remplacer titre, texte, boutons (tous à la fois), bouton-fermer, colonnes,
+# largeur-bouton et champ (false pour le retirer) ; tout le reste vient du dialogue. À l'ouverture, la première version dont
+# toutes les conditions sont vraies est montrée, sinon le dialogue lui-même. Au clic, le bouton est cherché dans la version
+# montrée à ce joueur.
+#
+# champ : ajoute un champ où le joueur tape un texte. Clés : libelle (texte au-dessus du champ), defaut (texte de départ, vide
+# par défaut), longueur-max (nombre de caractères au plus, 32 par défaut). Les commandes, messages et conditions des boutons
+# peuvent contenir {saisie} : le texte tapé, nettoyé. On ne garde que les lettres (accents compris), les chiffres, les espaces,
+# les apostrophes et les traits d'union ; les espaces multiples sont réduits à un et le texte est coupé à longueur-max.
+# Rien d'autre n'entre dans une commande. Sans champ, {saisie} est vide. Ne placez jamais {saisie} en début de commande.
+#
+# exige : un bouton peut demander des objets et des conditions avant de lancer sa commande. Clés :
+#   objets   liste de « MATERIAL:quantité » ou « #tag_minecraft:quantité » (« #minecraft:logs:4 »). Seuls comptent les objets
+#            normaux, sans nom personnalisé, sans lore, sans enchantement ni données de plugin : un objet renommé n'est
+#            ni compté ni retiré.
+#   si       conditions, comme ci-dessus
+#   refus    lignes lancées si l'exigence n'est pas remplie (mêmes préfixes que commande : [player], [console], [message]) ;
+#            vide, le joueur reçoit un message d'erreur simple
+# Quand toutes les conditions sont vraies et que l'inventaire contient les objets, ils sont retirés puis la commande du bouton
+# est lancée, dans le même tick, sur le scheduler du joueur ; sinon seules les lignes de refus sont lancées et rien n'est retiré.
+# Un [console] dans refus compte comme un [console] de commande (dialogue ouvert par la console ou le staff, une fois par ouverture).
+#
+# Exemple, à placer dans un fichier du dossier dialogues (à la racine) ou ici sous « dialogues: » :
+#   troc:
+#     titre:
+#       - '&7&l« &d&lSkyHand &8&l»'
+#       - '&fLe troqueur'
+#     texte:
+#       - '&7Donnez-moi &e3 bouteilles de miel &7et &e4 bûches&7.'
+#     champ:
+#       libelle: '&7Votre nom de marchand'
+#       longueur-max: 16
+#     bouton-fermer: ''
+#     boutons:
+#       echanger:
+#         libelle: '&a&lÉchanger'
+#         exige:
+#           objets:
+#             - 'HONEY_BOTTLE:3'
+#             - '#minecraft:logs:4'
+#           si:
+#             - '%player_level% >= 10'
+#           refus:
+#             - '[message] &8&l« &c&lSH &8&l» &7Il vous manque &cquelque chose&7.'
+#         commande:
+#           - '[console] give {joueur} diamond 1'
+#           - '[message] &8&l« &a&lSH &8&l» &7Merci &a{saisie}&7 !'
+#       partir:
+#         libelle: '&fPartir'
+#         fermer: true
+#     versions:
+#       habitue:
+#         si:
+#           - '%player_level% >= 30'
+#         texte:
+#           - '&7Je vous connais bien, même prix que d''habitude.'
 dialogues:
   # Cosmétiques gagnés dans une box : la récompense du lot ouvre le dialogue, par exemple
   #   shdialogs open nouveau-compagnon %player_name% Teckel &fCompagnon &6Teckel
