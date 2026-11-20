@@ -122,11 +122,11 @@ La clé `exige` d'un bouton demande des objets et des conditions avant de lancer
 
 | Clé | Rôle |
 |---|---|
-| `objets` | liste de `MATERIAL:quantité` ou `#tag_minecraft:quantité`, par exemple `HONEY_BOTTLE:3` ou `#minecraft:logs:4` |
+| `objets` | liste de `MATERIAL:quantité` ou `#tag_minecraft:quantité`, par exemple `HONEY_BOTTLE:3` ou `#minecraft:logs:4` ; suivie de `lore` (`RESIN_BRICK:8 lore`), la ligne accepte aussi un objet qui ne porte qu'un lore en plus |
 | `si` | conditions, comme ci-dessus |
 | `refus` | lignes lancées si l'exigence n'est pas remplie, avec les mêmes préfixes que `commande` (`[player]`, `[console]`, `[message]`) ; vide, le joueur reçoit un message d'erreur simple |
 
-Au clic, si toutes les conditions sont vraies et que l'inventaire contient les objets, ils sont retirés puis les `commande` du bouton sont lancées. Sinon seules les lignes `refus` sont lancées et rien n'est retiré. Seuls comptent les objets normaux, sans nom personnalisé, sans lore, sans enchantement ni données de plugin : un objet renommé n'est ni compté ni retiré. Le contrôle et le retrait se font dans le même tick, sur le scheduler du joueur (les mondes tournent en parallèle sur DivineMC). Plusieurs lignes qui visent la même matière ne comptent pas deux fois le même objet.
+Au clic, si toutes les conditions sont vraies et que l'inventaire contient les objets, ils sont retirés puis les `commande` du bouton sont lancées. Sinon seules les lignes `refus` sont lancées et rien n'est retiré. Seuls comptent les objets normaux, sans nom personnalisé, sans lore, sans enchantement ni données de plugin : un objet renommé n'est ni compté ni retiré. Une ligne finie par `lore` accepte en plus un objet dont la seule différence est son lore, comme les objets de rituel donnés par un plugin avec leur explication. Le contrôle et le retrait se font dans le même tick, sur le scheduler du joueur (les mondes tournent en parallèle sur DivineMC). Plusieurs lignes qui visent la même matière ne comptent pas deux fois le même objet.
 
 ```yaml
 echange:

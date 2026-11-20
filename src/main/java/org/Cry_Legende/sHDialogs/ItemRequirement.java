@@ -16,11 +16,13 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * Objets qu'un bouton exige dans l'inventaire du joueur (clé exige.objets) : « MATERIAL:quantité » ou « #tag_minecraft:quantité ».
+ * Objets qu'un bouton exige dans l'inventaire du joueur (clé exige.objets) : « MATERIAL:quantité » ou « #tag_minecraft:quantité »,
+ * suivi de « lore » quand l'objet peut porter un lore.
  * <p>
  * Seuls comptent les objets normaux, sans aucune personnalisation (nom, lore, enchantement, données de plugin...) : un objet
- * renommé n'est ni compté ni retiré. Le contrôle et le retrait se font dans le même appel, que l'appelant lance sur le scheduler
- * du joueur.
+ * renommé n'est ni compté ni retiré. Une ligne finie par « lore » accepte en plus un objet dont la seule personnalisation est
+ * son lore (un objet de rituel donné par un plugin avec son explication, par exemple). Le contrôle et le retrait se font dans
+ * le même appel, que l'appelant lance sur le scheduler du joueur.
  */
 final class ItemRequirement {
 
@@ -35,9 +37,9 @@ final class ItemRequirement {
     }
 
     /**
-     * Une ligne d'exigence : un objet précis ou un tag, et une quantité.
+     * Une ligne d'exigence : un objet précis ou un tag, une quantité, et si un lore est accepté.
      */
-    record Item(String text, Material material, Tag<Material> tag, int amount) {
+    record Item(String text, Material material, Tag<Material> tag, int amount, boolean lore) {
 
         boolean matches(Material type) {
             return material != null ? material == type : tag.isTagged(type);
@@ -54,11 +56,17 @@ final class ItemRequirement {
     }
 
     /**
-     * Lit « MATERIAL:quantité », « minecraft:material:quantité » ou « #minecraft:tag:quantité » (quantité 1 si omise). Null,
-     * après l'avoir signalé, si la ligne est invalide.
+     * Lit « MATERIAL:quantité », « minecraft:material:quantité » ou « #minecraft:tag:quantité » (quantité 1 si omise), suivi
+     * de « lore » si l'objet peut porter un lore. Null, après l'avoir signalé, si la ligne est invalide.
      */
     static Item parse(String raw, Consumer<String> warn) {
         String text = raw == null ? "" : raw.trim();
+        boolean lore = false;
+        String lower = text.toLowerCase(Locale.ROOT);
+        if (lower.endsWith(" lore")) {
+            lore = true;
+            text = text.substring(0, text.length() - 5).trim();
+        }
         String name = text;
         int amount = 1;
         int colon = text.lastIndexOf(':');
@@ -85,22 +93,29 @@ final class ItemRequirement {
                 warn.accept("tag inconnu dans exige.objets : " + text);
                 return null;
             }
-            return new Item(text, null, tag, amount);
+            return new Item(text, null, tag, amount, lore);
         }
         Material material = name.isBlank() ? null : Material.matchMaterial(name, false);
         if (material == null || material.isAir() || !material.isItem()) {
             warn.accept("objet inconnu dans exige.objets : " + text);
             return null;
         }
-        return new Item(text, material, null, amount);
+        return new Item(text, material, null, amount, lore);
     }
 
     /**
      * Vrai si l'objet est normal : rien de plus que ce que sa matière porte d'origine (seule l'usure est tolérée).
      */
     static boolean isPlain(ItemStack stack) {
+        return isPlain(stack, false);
+    }
+
+    /**
+     * Vrai si l'objet est normal, son lore mis à part quand lore est vrai.
+     */
+    static boolean isPlain(ItemStack stack, boolean lore) {
         for (DataComponentType type : stack.getDataTypes()) {
-            if (stack.isDataOverridden(type) && !TOLERATED.contains(type)) {
+            if (stack.isDataOverridden(type) && !TOLERATED.contains(type) && !(lore && type == DataComponentTypes.LORE)) {
                 return false;
             }
         }
@@ -115,11 +130,14 @@ final class ItemRequirement {
         PlayerInventory inventory = player.getInventory();
         ItemStack[] stacks = new ItemStack[41];
         int[] free = new int[41];
+        // normal : sans rien du tout ; avecLore : sans rien d'autre qu'un lore (compté seulement par une ligne « lore »)
+        boolean[] normal = new boolean[41];
         for (int slot : SLOTS) {
             ItemStack stack = inventory.getItem(slot);
-            if (stack != null && !stack.getType().isAir() && stack.getAmount() > 0 && isPlain(stack)) {
+            if (stack != null && !stack.getType().isAir() && stack.getAmount() > 0 && isPlain(stack, true)) {
                 stacks[slot] = stack;
                 free[slot] = stack.getAmount();
+                normal[slot] = isPlain(stack, false);
             }
         }
         int[] taken = new int[41];
@@ -129,7 +147,7 @@ final class ItemRequirement {
                 if (missing == 0) {
                     break;
                 }
-                if (free[slot] > taken[slot] && item.matches(stacks[slot].getType())) {
+                if (free[slot] > taken[slot] && (normal[slot] || item.lore()) && item.matches(stacks[slot].getType())) {
                     int part = Math.min(missing, free[slot] - taken[slot]);
                     taken[slot] += part;
                     missing -= part;
