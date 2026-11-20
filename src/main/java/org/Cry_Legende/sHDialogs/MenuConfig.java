@@ -76,6 +76,8 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
 
     private static final Pattern ID = Pattern.compile("[a-z0-9_-]{1,40}");
     static final int MAX_COMMAND_LENGTH = 200;
+    /** Une commande console n'a pas la limite du chat : objets avec composants, longues commandes vanilla. */
+    static final int MAX_CONSOLE_COMMAND_LENGTH = 2000;
     static final int MAX_MESSAGE_LENGTH = 512;
 
     static MenuConfig read(ConfigurationSection root, Consumer<String> warn) {
@@ -252,7 +254,7 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
             return text.isEmpty() || text.length() > MAX_MESSAGE_LENGTH || text.indexOf('\n') >= 0 || text.indexOf('\r') >= 0
                     ? null : new Action(kind, text);
         }
-        String command = cleanCommand(line);
+        String command = cleanCommand(line, kind == Action.Kind.CONSOLE ? MAX_CONSOLE_COMMAND_LENGTH : MAX_COMMAND_LENGTH);
         return command == null ? null : new Action(kind, command);
     }
 
@@ -260,6 +262,10 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
      * Commande sans le « / » initial, ou null si elle est vide, trop longue ou sur plusieurs lignes.
      */
     static String cleanCommand(String raw) {
+        return cleanCommand(raw, MAX_COMMAND_LENGTH);
+    }
+
+    static String cleanCommand(String raw, int maxLength) {
         if (raw == null) {
             return null;
         }
@@ -267,7 +273,7 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
         while (command.startsWith("/")) {
             command = command.substring(1).trim();
         }
-        if (command.isEmpty() || command.length() > MAX_COMMAND_LENGTH || command.indexOf('\n') >= 0 || command.indexOf('\r') >= 0) {
+        if (command.isEmpty() || command.length() > maxLength || command.indexOf('\n') >= 0 || command.indexOf('\r') >= 0) {
             return null;
         }
         return command;

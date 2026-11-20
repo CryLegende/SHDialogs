@@ -146,9 +146,10 @@ menu:
 # et actif. Une seule adresse par site : changez-la ici, tous les menus qui ouvrent le dialogue la suivent.
 #
 # commande d'un bouton : une ligne, ou une liste de lignes lancées dans l'ordre. Chaque ligne :
-#   sans préfixe, ou « [player] ... »   commande lancée par le joueur, comme s'il la tapait dans le chat ;
-#   « [console] ... »                   commande lancée par la console. Un dialogue qui en a ne s'ouvre que par la console ou le
-#                                       staff (shdialogs.open.others), et chaque ouverture ne sert qu'à un clic ;
+#   sans préfixe, ou « [player] ... »   commande lancée par le joueur, comme s'il la tapait dans le chat (200 caractères au plus) ;
+#   « [console] ... »                   commande lancée par la console (2 000 caractères au plus). Un dialogue qui en a ne s'ouvre
+#                                       que par la console ou le staff (shdialogs.open.others), et chaque ouverture ne sert qu'à
+#                                       un clic ;
 #   « [message] ... »                   message envoyé dans le chat du joueur.
 # Valeurs : « /shdialogs open <dialogue> <joueur> <valeur 1> <valeur 2>... » remplace {1}, {2}... dans le titre, le texte,
 # les libellés, les infobulles et les commandes ; la dernière valeur prend le reste de la ligne (espaces et couleurs
