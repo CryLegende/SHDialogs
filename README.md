@@ -164,6 +164,7 @@ Utilisé sur : **Opale** (Purpur/DivineMC 1.21.11, Java 25).
 | `/shdialogs reload` | — | Relit `config.yml`, `messages.yml` et le dossier `dialogues`. Si l'un d'eux est invalide, rien n'est remplacé et le fichier fautif est indiqué. Signale les identifiants définis deux fois. | `shdialogs.admin.reload` |
 | `/shdialogs list` | — | Liste le menu et les dialogues de `config.yml` et du dossier `dialogues` : chargés (avec leur fichier), désactivés, en doublon ou en erreur (avec la cause). | `shdialogs.admin.list` |
 | `/shdialogs menu` | — | Ouvre le menu SkyHand à la demande (outil de test du staff, joueur seulement). | `shdialogs.menu` |
+| `/shdialogs openlater <ticks> <dialogue> <joueur> [valeurs...]` | — | Ouvre le dialogue après 1 à 200 ticks, le temps de laisser jouer l'animation d'un PNJ ou un effet ; seule la dernière ouverture demandée pour un joueur s'affiche (deux clics rapides n'ouvrent qu'un dialogue) | `shdialogs.open.others` |
 | `/shdialogs open <dialogue> [joueur] [valeurs...]` | — | Ouvre un dialogue de la section `dialogues` (à soi-même, ou à un joueur pour la console et le staff), avec ses valeurs `{1}`, `{2}`... | `shdialogs.open` (tous), `shdialogs.open.others` (op : autre joueur, valeurs, dialogue avec `[console]`) |
 
 La console peut utiliser `reload`, `list` et `open` avec un joueur.

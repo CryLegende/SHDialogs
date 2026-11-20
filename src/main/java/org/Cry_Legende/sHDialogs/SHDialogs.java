@@ -37,6 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
@@ -329,6 +330,10 @@ public final class SHDialogs extends JavaPlugin implements Listener {
      * tournent en parallèle : ce qui lit ou change l'inventaire, les effets ou l'écran d'un joueur s'exécute sur son propre thread.
      * Sans effet si le joueur a quitté ou si le plugin s'arrête.
      */
+    /** Dernière ouverture demandée par joueur (voir open) : une plus ancienne encore en attente ne s'affiche pas. */
+    private final Map<UUID, Long> lastOpen = new ConcurrentHashMap<>();
+    private final AtomicLong openTickets = new AtomicLong();
+
     private void onPlayer(Player player, long delay, Runnable task) {
         try {
             if (delay <= 0) {
@@ -639,7 +644,27 @@ public final class SHDialogs extends JavaPlugin implements Listener {
      * Les valeurs remplacent {1}, {2}... du dialogue, la dernière prend le reste de la ligne. Elles passent dans les commandes
      * des boutons : comme un dialogue qui a un bouton [console], elles sont réservées à la console et au staff.
      */
+    /** Délai le plus long de /shdialogs openlater : 10 secondes. */
+    private static final int MAX_OPEN_DELAY = 200;
+
+    /** Ticks de /shdialogs openlater (1 à MAX_OPEN_DELAY), 0 si le texte n'en est pas. */
+    private static int ticks(String text) {
+        try {
+            int ticks = Integer.parseInt(text.trim());
+            return ticks >= 1 && ticks <= MAX_OPEN_DELAY ? ticks : 0;
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
     private void openCommand(CommandSender sender, String id, String targetName, String[] rawValues) {
+        openCommand(sender, id, targetName, rawValues, 1);
+    }
+
+    /**
+     * Ouvre un dialogue après delay ticks (1 pour /shdialogs open : au tick suivant).
+     */
+    private void openCommand(CommandSender sender, String id, String targetName, String[] rawValues, int delay) {
         if (targetName != null && sender instanceof Player self && self.getName().equalsIgnoreCase(targetName)) {
             targetName = null;
         }
@@ -706,18 +731,31 @@ public final class SHDialogs extends JavaPlugin implements Listener {
             messages.send(sender, Messages.Type.ERREUR, "erreur-interne");
             return;
         }
-        open(sender, target, new Request(dialogue, Map.copyOf(values)));
+        open(sender, target, new Request(dialogue, Map.copyOf(values)), delay);
         if (target != sender && sender instanceof Player) {
             messages.send(sender, Messages.Type.SUCCES, "ouvert", "dialogue", dialogue.id(), "joueur", target.getName());
         }
     }
 
     private void open(CommandSender sender, Player target, Request request) {
-        // au tick suivant : la commande est souvent lancée depuis l'événement de clic d'un menu DeluxeMenus, qu'on ne ferme pas ici
-        onPlayer(target, 1, () -> {
-            if (!target.isOnline()) {
+        open(sender, target, request, 1);
+    }
+
+    /**
+     * Ouvre le dialogue après delay ticks. Seule la dernière ouverture demandée pour un joueur s'affiche : un dialogue
+     * attendu (openlater, le temps de l'animation d'un PNJ par exemple) ne s'ouvre pas par-dessus un autre demandé après lui,
+     * et deux clics rapides n'en ouvrent qu'un.
+     */
+    private void open(CommandSender sender, Player target, Request request, int delay) {
+        long ticket = openTickets.incrementAndGet();
+        lastOpen.put(target.getUniqueId(), ticket);
+        // au tick suivant au plus tôt : la commande est souvent lancée depuis l'événement de clic d'un menu DeluxeMenus,
+        // qu'on ne ferme pas ici
+        onPlayer(target, Math.max(1, delay), () -> {
+            if (!target.isOnline() || !Long.valueOf(ticket).equals(lastOpen.get(target.getUniqueId()))) {
                 return;
             }
+            lastOpen.remove(target.getUniqueId(), ticket);
             try {
                 if (target.getOpenInventory().getType() != InventoryType.CRAFTING) {
                     if (request.dialogue().waitMenu()) {
@@ -803,6 +841,9 @@ public final class SHDialogs extends JavaPlugin implements Listener {
             if (sender.hasPermission(PERMISSION_OPEN) || sender.hasPermission(PERMISSION_OPEN_OTHERS)) {
                 subs.add("open");
             }
+            if (sender.hasPermission(PERMISSION_OPEN_OTHERS)) {
+                subs.add("openlater");
+            }
             return subs;
         }
 
@@ -836,6 +877,15 @@ public final class SHDialogs extends JavaPlugin implements Listener {
                             args.length > 3 ? Arrays.copyOfRange(args, 3, args.length) : new String[0]);
                 } else if (sub.equals("open")) {
                     messages.send(sender, Messages.Type.ERREUR, "open-usage");
+                } else if (sub.equals("openlater") && args.length >= 4 && ticks(args[1]) > 0) {
+                    if (!sender.hasPermission(PERMISSION_OPEN_OTHERS)) {
+                        messages.send(sender, Messages.Type.ERREUR, "permission");
+                        return;
+                    }
+                    openCommand(sender, args[2], args[3], args.length > 4 ? Arrays.copyOfRange(args, 4, args.length) : new String[0],
+                            ticks(args[1]));
+                } else if (sub.equals("openlater")) {
+                    messages.send(sender, Messages.Type.ERREUR, "openlater-usage");
                 } else {
                     List<String> subs = allowed(sender);
                     if (subs.isEmpty()) {
@@ -854,6 +904,14 @@ public final class SHDialogs extends JavaPlugin implements Listener {
         public Collection<String> suggest(CommandSourceStack source, String[] args) {
             CommandSender sender = source.getSender();
             List<String> options = new ArrayList<>();
+            if (args.length >= 2 && args[0].equalsIgnoreCase("openlater")) {
+                // openlater <ticks> <dialogue> <joueur> : mêmes propositions que open, un rang plus loin
+                if (args.length == 2) {
+                    return List.of("20", "40");
+                }
+                args = Arrays.copyOfRange(args, 1, args.length);
+                args[0] = "open";
+            }
             if (args.length >= 2 && args[0].equalsIgnoreCase("open")) {
                 String start = args[args.length - 1].toLowerCase(Locale.ROOT);
                 if (args.length == 2 && sender.hasPermission(PERMISSION_OPEN)) {

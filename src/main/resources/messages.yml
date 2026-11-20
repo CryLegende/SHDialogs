@@ -21,6 +21,7 @@ erreur:
   # {sous-commandes} : les sous-commandes que l'expéditeur a le droit d'utiliser
   usage-liste: 'Utilisation : &e/shdialogs <{sous-commandes}>&7.'
   open-usage: 'Utilisation : &e/shdialogs open <dialogue> [joueur] [valeurs...]&7.'
+  openlater-usage: 'Utilisation : &e/shdialogs openlater <ticks de 1 à 200> <dialogue> <joueur> [valeurs...]&7.'
   # {dialogue} et {attendues} : nombre de valeurs ({1}, {2}...) que le dialogue attend après le joueur
   valeurs-manquantes: 'Le dialogue &e{dialogue} &7attend &e{attendues} &7valeur(s) après le joueur.'
   valeurs-inattendues: 'Le dialogue &e{dialogue} &7n''attend pas de valeur après le joueur.'

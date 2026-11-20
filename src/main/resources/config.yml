@@ -27,6 +27,10 @@
 #   /shdialogs open <dialogue> [joueur]       Ouvre un dialogue à soi-même, ou à un autre joueur.
 #   /shdialogs open <dialogue> <joueur> <valeurs...>
 #                                             Avec les valeurs {1}, {2}... du dialogue (console et staff, voir plus bas).
+#   /shdialogs openlater <ticks> <dialogue> <joueur> [valeurs...]
+#                                             Ouvre le dialogue après 1 à 200 ticks (laisser jouer l'animation d'un PNJ ou
+#                                             un effet avant). Seule la dernière ouverture demandée pour un joueur s'affiche :
+#                                             deux clics rapides n'ouvrent qu'un dialogue. Permission shdialogs.open.others.
 #
 # Permissions :
 #   shdialogs.admin          Toutes les sous-commandes d'administration (par défaut : op).
