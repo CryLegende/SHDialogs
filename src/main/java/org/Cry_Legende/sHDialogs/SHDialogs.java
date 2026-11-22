@@ -381,6 +381,25 @@ public final class SHDialogs extends JavaPlugin implements Listener {
         return protocol <= 0 || protocol >= minProtocol;
     }
 
+    /** Dernier « mets ton jeu à jour » par joueur : un clic de PNJ peut demander deux dialogues de suite. */
+    private final Map<UUID, Long> lastOldClientNotice = new ConcurrentHashMap<>();
+    private static final long OLD_CLIENT_NOTICE_MS = 3000;
+
+    /**
+     * Le dialogue ne peut pas s'afficher (client d'avant la 1.21.6) : le joueur est invité à mettre son jeu à jour, au plus
+     * une fois toutes les OLD_CLIENT_NOTICE_MS, qu'il ait ouvert le dialogue lui-même ou qu'un PNJ, un menu ou la console
+     * l'ait ouvert pour lui.
+     */
+    private void warnOldClient(Player target) {
+        long now = System.currentTimeMillis();
+        Long last = lastOldClientNotice.get(target.getUniqueId());
+        if (last != null && now - last < OLD_CLIENT_NOTICE_MS) {
+            return;
+        }
+        lastOldClientNotice.put(target.getUniqueId(), now);
+        messages.send(target, Messages.Type.AVERTISSEMENT, "version-ancienne");
+    }
+
     /**
      * Vérifie au démarrage que le dialogue est bien dans le registre et dans les deux tags.
      */
@@ -411,6 +430,7 @@ public final class SHDialogs extends JavaPlugin implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
         lastMenuClick.remove(uuid);
+        lastOldClientNotice.remove(uuid);
         openings.remove(uuid);
         waiting.remove(uuid);
     }
@@ -718,11 +738,11 @@ public final class SHDialogs extends JavaPlugin implements Listener {
             return;
         }
         if (!supportsDialogs(target, 771)) {
-            // pas de repli : le menu DeluxeMenus garde son texte classique ; l'avertissement va à celui qui a lancé la commande
-            // (le joueur lui-même, le staff ou la console), jamais à la cible
-            if (target == sender) {
-                messages.send(sender, Messages.Type.AVERTISSEMENT, "version-ancienne");
-            } else {
+            // pas de repli en texte (les menus DeluxeMenus gardent leur texte classique) : le joueur est invité à mettre son
+            // jeu à jour ; un membre du staff qui l'ouvre pour lui le sait aussi (la console, elle, n'en a rien à faire :
+            // un clic de PNJ par un vieux client n'est pas une erreur)
+            warnOldClient(target);
+            if (target != sender && sender instanceof Player) {
                 messages.send(sender, Messages.Type.AVERTISSEMENT, "version-ancienne-autre", "joueur", target.getName());
             }
             return;

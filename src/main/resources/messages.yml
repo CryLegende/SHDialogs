@@ -33,7 +33,7 @@ erreur:
   bouton-indisponible: 'Ce bouton n''est plus disponible.'
   bouton-permission: 'Vous n''avez pas accès à &e{bouton}&7.'
   commande-echec: 'La commande &e/{commande} &7n''a pas pu être lancée.'
-  version-ancienne: 'Votre version de Minecraft ne gère pas ce menu : il faut la &e1.21.6 &7ou plus.'
+  version-ancienne: 'Ta version de Minecraft est trop ancienne pour ce menu. Passe en &c1.21.6 &7ou plus récent pour l''ouvrir.'
   erreur-interne: 'Une erreur est survenue : réessayez, ou prévenez un membre du &cstaff&7.'
   # {fichier} : fichier invalide, {erreur} : cause
   reload-erreur: 'Rechargement refusé : &c{fichier}&7 est invalide, l''ancienne configuration reste en place. &c{erreur}'
@@ -65,8 +65,9 @@ avertissement:
   # Même texte que info.reload-bilan, utilisé quand au moins un dialogue est en erreur
   reload-bilan: '&e{charges}&7 dialogue(s) chargé(s), &c{erreurs}&7 en erreur.'
   # Client sans dialogues (avant la 1.21.6) : pas de repli, les menus DeluxeMenus gardent leur texte classique.
-  # L'avertissement va à celui qui lance la commande : au joueur lui-même, ou au staff / à la console s'ils l'ouvrent à un autre joueur.
-  version-ancienne: 'Votre version de Minecraft ne gère pas les dialogues : il faut la &e1.21.6 &7ou plus.'
+  # version-ancienne va au joueur, qu'il ouvre le dialogue lui-même ou qu'un PNJ, un menu ou la console l'ouvre pour lui
+  # (au plus une fois toutes les 3 secondes) ; version-ancienne-autre au membre du staff qui l'ouvre pour lui.
+  version-ancienne: 'Ta version de Minecraft est trop ancienne pour ce dialogue. Mets ton jeu à jour en &61.21.6 &7ou plus récent pour en profiter.'
   version-ancienne-autre: 'Le joueur &e{joueur} &7ne gère pas les dialogues (&e1.21.6 &7minimum).'
   # Identifiant défini deux fois : le premier lu est gardé.
   # {dialogue}, {fichier} (celui qui est ignoré) et {premier} (celui qui est gardé)
