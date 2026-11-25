@@ -89,7 +89,7 @@ menu:
   #   commande   : commande lancée par le joueur, comme s'il la tapait dans le chat (ou une liste, avec des lignes
   #                [message] ; pas de [console] dans le menu : il s'ouvre depuis l'écran Échap, sans passer par le serveur)
   #   url        : à la place de commande, ouvre une adresse http(s) (le client demande confirmation)
-  #   fermer     : true à la place de commande et url, le bouton ferme simplement le dialogue
+  #   fermer     : true, le bouton ferme le dialogue (avec une commande ou une url, elle est lancée avant)
   #   permission : permission nécessaire (facultatif, vide = tout le monde)
   #   actif      : false pour masquer le bouton
   boutons:

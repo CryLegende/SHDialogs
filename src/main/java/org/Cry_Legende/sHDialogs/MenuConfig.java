@@ -177,10 +177,13 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
         }
         List<String> tooltip = b.getStringList("infobulle");
         String permission = b.getString("permission", "");
-        if (b.getBoolean("fermer", false)) {
+        List<String> lines = Texts.lineList(b, "commande", List.of());
+        String url = b.getString("url", "");
+        // « fermer » seul : le bouton ferme. Avec une commande ou une adresse, elle est lancée et le dialogue se ferme ensuite
+        // de lui-même (sauf si elle en ouvre un autre)
+        if (b.getBoolean("fermer", false) && lines.isEmpty() && url.isBlank()) {
             return new Button(id, label, tooltip, List.of(), null, "", true);
         }
-        String url = b.getString("url", "");
         if (!url.isBlank()) {
             String checked = checkUrl(url.trim());
             if (checked == null) {
@@ -189,7 +192,6 @@ record MenuConfig(boolean enabled, boolean pauseScreen, boolean quickActions, Li
             }
             return new Button(id, label, tooltip, List.of(), checked, permission == null ? "" : permission, false);
         }
-        List<String> lines = Texts.lineList(b, "commande", List.of());
         if (lines.isEmpty()) {
             warn.accept("Bouton « " + id + " » ignoré : commande manquante.");
             return null;
